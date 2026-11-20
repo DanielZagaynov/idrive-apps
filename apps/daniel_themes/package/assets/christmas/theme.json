@@ -1,7 +1,7 @@
 {
   "id": "christmas",
   "name": "Christmas Wood",
-  "plateIsRender": true,
+  "plateIsRender": false,
   "speed": {
     "pivot": [
       435,
