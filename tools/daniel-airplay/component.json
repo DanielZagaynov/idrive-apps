@@ -1,0 +1,38 @@
+{
+  "id": "daniel-airplay",
+  "kind": "tool",
+  "version": "0.1.0",
+  "title": "AirPlay receiver",
+  "description": "Receives iPhone Screen Mirroring over the car's Wi-Fi hotspot and hands the picture to mgu-render for the AirPlay Mirror app (shown only while parked). Video only for now.",
+  "optional": true,
+  "uninstallable": true,
+  "mguHmi": ["ID7"],
+  "requires": {},
+  "files": [
+    { "path": "airplayd.js", "mode": "0644" },
+    { "path": "lib/bplist.js", "mode": "0644" },
+    { "path": "lib/dns.js", "mode": "0644" },
+    { "path": "lib/fairplay.js", "mode": "0644" },
+    { "path": "lib/mdns.js", "mode": "0644" },
+    { "path": "lib/mirror.js", "mode": "0644" },
+    { "path": "lib/nacl.js", "mode": "0644" },
+    { "path": "lib/pairing.js", "mode": "0644" },
+    { "path": "lib/receiver.js", "mode": "0644" },
+    { "path": "lib/server.js", "mode": "0644" },
+    { "path": "lib/video-sink.js", "mode": "0644" },
+    { "path": "lib/LICENSE.tweetnacl", "mode": "0644" },
+    { "path": "bin/airplay-video", "mode": "0755" },
+    { "path": "bin/fairplay", "mode": "0755" },
+    { "path": "LICENSE", "mode": "0644" },
+    { "path": "LICENSE.ffmpeg", "mode": "0644" }
+  ],
+  "units": [
+    { "name": "daniel-airplay.service", "from": "daniel-airplay.service" }
+  ],
+  "enable": [
+    { "unit": "daniel-airplay.service", "target": "multi-user.target" }
+  ],
+  "restart": ["daniel-airplay.service"],
+  "recmgr": ["daniel-airplay"],
+  "crashNames": ["airplay-video", "fairplay"]
+}

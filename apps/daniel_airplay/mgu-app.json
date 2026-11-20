@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "daniel_airplay",
+  "version": "0.1.0",
+  "tree": "package",
+  "modules": [
+    "src/airplay.js",
+    "src/tool_link.js",
+    "src/speed.js",
+    "src/mgu_render_client.js"
+  ],
+  "sdk": [
+    "oap-sdk/src/core/OnlineApp.js",
+    "oap-sdk/src/logging/logging",
+    "oap-sdk/src/someip/someipBuilders"
+  ]
+}

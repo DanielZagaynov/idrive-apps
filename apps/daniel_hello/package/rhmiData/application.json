@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.3.0",
+  "application": {
+    "uuid": "34096976-7cbb-447e-bd29-8787e5d2addf",
+    "type": "OnlineApp",
+    "name": "daniel_hello",
+    "vendor": "owner",
+    "version": "0.1.0",
+    "defaultLanguage": "en_GB",
+    "uiDescriptions": [
+      {
+        "applicationFilePath": "./uiDescriptions/ID7/application.xml",
+        "uiDescriptionFilePath": "./uiDescriptions/ID7/uiDescription.json",
+        "hmi": [
+          "ID7"
+        ]
+      },
+      {
+        "applicationFilePath": "./uiDescriptions/ID8/application.xml",
+        "uiDescriptionFilePath": "./uiDescriptions/ID8/uiDescription.json",
+        "hmi": [
+          "ID8"
+        ]
+      }
+    ],
+    "stringBundleUuid": "a763050f-2967-4339-ba41-999afeda0c11",
+    "resourceBundleUuid": "857839b5-c0a7-4b09-b015-4a73925eda0d",
+    "variantGroups": [
+      {
+        "stringsPath": "./variantGroups/Common/texts",
+        "resourcesPath": "./variantGroups/Common/images",
+        "hmi": [
+          "ID7",
+          "ID8"
+        ],
+        "brands": [
+          "BMW"
+        ]
+      }
+    ],
+    "entryPoints": [
+      {
+        "name": "daniel_hello",
+        "uuid": "42d12232-fb3c-43c3-a21f-7cc62d559bbb",
+        "textId": "SID_HELLO_TITLE",
+        "icon": "hello_icon.png",
+        "insertionStateId": 20974,
+        "insertionFocusId": 2,
+        "insertionMode": "INSERT_BELOW",
+        "insertionOrder": 0,
+        "insertionPriority": 0,
+        "previewType": "NONE",
+        "bookmarkable": true,
+        "private": null,
+        "appearance": "DEFAULT",
+        "isGroupHeader": false,
+        "insertionGroup": 0
+      }
+    ]
+  }
+}

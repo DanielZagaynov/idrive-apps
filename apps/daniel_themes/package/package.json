@@ -1,0 +1,41 @@
+{
+  "name": "daniel_themes",
+  "version": "0.1.0",
+  "description": "Cluster themes: a full-cluster artwork with live needles and readouts (iDrive 7, needs Cluster renderer)",
+  "private": false,
+  "main": "javascript/runner.js",
+  "oapAppSettings": {
+    "maxDiskUsage": 20971520,
+    "cpuLimit": 10,
+    "memoryThresholdKB": 131072,
+    "priority": "PRIO_MEDIUM",
+    "visibility": "FOREGROUND",
+    "latencyClass": "FOREGROUND",
+    "loggingId": "THEM",
+    "userLoginRequired": false,
+    "backgroundPriority": 150,
+    "someipManifest": "manifest.json"
+  },
+  "files": [
+    "config",
+    "rhmiData",
+    "package.json",
+    "npm-shrinkwrap.json",
+    "permissions.json",
+    "javascript",
+    "manifest.json",
+    "assets"
+  ],
+  "dependencies": {
+    "oap-sdk": "24.10.2"
+  },
+  "engines": {
+    "node": ">=8.7.0"
+  },
+  "author": "owner",
+  "license": "MIT",
+  "mguHmi": [
+    "ID7"
+  ],
+  "mguAppStartType": "autostart"
+}

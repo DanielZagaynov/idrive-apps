@@ -1,0 +1,12 @@
+# build output
+*.tgz
+*.mgu
+# the build writes this; the car links its own
+**/javascript/app.js
+**/javascript/build.json
+# BMW SDK: never commit (donor apps copied off the head unit)
+donor/
+node_modules/
+
+# daniel_themes: the simulator's pictures
+sim-out/

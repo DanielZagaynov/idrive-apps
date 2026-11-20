@@ -1,0 +1,40 @@
+{
+  "name": "daniel_hello",
+  "version": "0.1.0",
+  "description": "A starter app: one page with a status line, a counter button and a reset button",
+  "private": false,
+  "main": "javascript/runner.js",
+  "oapAppSettings": {
+    "maxDiskUsage": 5242880,
+    "cpuLimit": 10,
+    "memoryThresholdKB": 65536,
+    "priority": "PRIO_MEDIUM",
+    "visibility": "FOREGROUND",
+    "latencyClass": "FOREGROUND",
+    "loggingId": "HELO",
+    "userLoginRequired": false,
+    "backgroundPriority": 150,
+    "someipManifest": "manifest.json"
+  },
+  "files": [
+    "config",
+    "rhmiData",
+    "package.json",
+    "npm-shrinkwrap.json",
+    "permissions.json",
+    "javascript",
+    "manifest.json"
+  ],
+  "dependencies": {
+    "oap-sdk": "24.10.2"
+  },
+  "engines": {
+    "node": ">=8.7.0"
+  },
+  "author": "owner",
+  "license": "MIT",
+  "mguHmi": [
+    "ID7",
+    "ID8"
+  ]
+}
