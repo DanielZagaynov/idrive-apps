@@ -166,6 +166,14 @@
       "bold": 0.6
     }
   },
+  "level": {
+    "inner": -40,
+    "width": 8,
+    "glow": 10,
+    "from": "#ffc04d",
+    "to": "#ff2a1a",
+    "alpha": 0.95
+  },
   "needle": {
     "color": "#d01f26",
     "length": 330,

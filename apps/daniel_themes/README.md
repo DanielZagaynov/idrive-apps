@@ -1,7 +1,8 @@
 # Cluster Themes (`daniel_themes`)
 
 Puts a theme over the **whole instrument cluster** of an **iDrive 7** car, with
-**live needles and readouts**: speed, engine rpm and gear from the car. The
+**live needles, level glows and readouts**: speed, engine rpm and gear from
+the car; a glowing band runs along each scale from zero up to the needle. The
 first theme is **Christmas Wood**, from the render in
 `assets/christmas_cluster.webp`.
 
@@ -26,7 +27,8 @@ open.
   car sends a speed.
 - Its tile, **Cluster Themes**, opens one page: what the theme is doing
   ("On the cluster", "Hidden: no speed from the car yet", "Waiting for
-  Cluster renderer…") and **Turn theme off / on**, which is remembered.
+  Cluster renderer…"), **Turn theme off / on** and **Turn glow off / on**
+  (the level bands), both remembered.
 
 ## The clean plate (needed before installing)
 
@@ -51,7 +53,7 @@ Until it exists, `tools/check.js` and `tools/build.js` refuse to pass.
 | `assets/` | the source pictures (the render; the plate once made) |
 | `designer/index.html` | the preset designer (cluster, head unit, HUD); Christmas Wood shows the render exactly |
 | `src/themes.js` | the app: the page, the setting, the show rule |
-| `src/cluster.js` | the layers on cluster-render: plate, needles (turned and stretched to the numbers), hub caps, readouts |
+| `src/cluster.js` | the layers on cluster-render: plate, level bands (lit up to the value; only the part that changed is sent), needles (turned and stretched to the numbers), hub caps, readouts |
 | `src/car.js` | speed, rpm and gear from `Vehicle2`, `CDS` and `VehicleInformation`, scaled as BMW scales them, with how fresh each is |
 | `src/png.js`, `src/glyphs.js` | reading the pictures and drawing the readouts' text on the car |
 | `lib/cluster_render_client.js` | cluster-render's Node client, copied unchanged (MPL-2.0, `lib/MPL-2.0.txt`) |

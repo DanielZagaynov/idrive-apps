@@ -66,7 +66,8 @@ const STATES = [
     state(1, 'ST_Themes_Main', 10, TITLE, null, [
         text(20, 'themesStatus', 'Starting'),
         label(21, 'themesTheme', 'Theme'),
-        button(22, 'themesToggle', 'Turn theme off')
+        button(22, 'themesToggle', 'Turn theme off'),
+        button(23, 'themesGlow', 'Turn glow off')
     ])
 ];
 

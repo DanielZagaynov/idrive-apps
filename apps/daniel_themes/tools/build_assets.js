@@ -239,7 +239,7 @@ function buildTheme(src, atlas) {
     fs.writeFileSync(path.join(dir, 'glyphs.json'), JSON.stringify(fonts));
     const runtime = {
         id: t.id, name: t.name, plateIsRender,
-        speed: t.speed, rpm: t.rpm, hubRadius: t.hubRadius, readouts: t.readouts,
+        speed: t.speed, rpm: t.rpm, hubRadius: t.hubRadius, readouts: t.readouts, level: t.level,
         needle: Object.assign({}, t.needle, { pivotX: n.pivotX, pivotY: n.pivotY })
     };
     fs.writeFileSync(path.join(dir, 'theme.json'), JSON.stringify(runtime, null, 2) + '\n');

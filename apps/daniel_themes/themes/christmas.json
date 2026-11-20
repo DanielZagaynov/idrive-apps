@@ -3,7 +3,7 @@
   "name": "Christmas Wood",
   "render": "assets/christmas_cluster.webp",
   "plate": "assets/christmas_plate.png",
-  "note": "All positions are in cluster pixels (1920x720), measured on the render. 'points' are [value, x, y]: where that value's number sits on the scale; the needle aims there and stops 'margin' px short of it.",
+  "note": "All positions are in cluster pixels (1920x720), measured on the render. 'points' are [value, x, y]: where that value's number sits on the scale; the needle aims there and stops 'margin' px short of it. 'level' is the band that fills along each scale up to the value: 'inner' px inside the numbers (negative: outside them, along the ticks), 'width' px wide, a soft 'glow' px either side, coloured 'from' at zero to 'to' at the top.",
   "speed": {
     "pivot": [435, 342],
     "unit": "mph",
@@ -21,6 +21,7 @@
   },
   "needle": {"color": "#d01f26", "length": 330, "base": 9, "tip": 2.5},
   "hubRadius": 31,
+  "level": {"inner": -40, "width": 8, "glow": 10, "from": "#ffc04d", "to": "#ff2a1a", "alpha": 0.95},
   "readouts": {
     "speed":  {"x": 618, "y": 328, "capHeight": 73, "align": "center", "color": "#f6ead3", "box": [438, 278, 360, 100], "stretch": 1.25, "bold": 3},
     "gear":   {"x": 1305, "y": 332, "capHeight": 70, "align": "center", "color": "#f6ead3", "box": [1225, 282, 160, 100], "stretch": 1.3, "bold": 3},

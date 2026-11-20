@@ -28,7 +28,7 @@ const logger = logging.getSDKLogger();
 
 const APP_ID = 'daniel_themes';
 const MAIN = 'ST_Themes_Main';
-const C = { status: 'themesStatus', toggle: 'themesToggle', theme: 'themesTheme' };
+const C = { status: 'themesStatus', toggle: 'themesToggle', glow: 'themesGlow', theme: 'themesTheme' };
 const BUTTON_CELL = 'Text';            // iDrive 7's LT_Button_1Row (the app is iDrive 7 only)
 const FOREGROUND_REASONS = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'TRIGGER_HMI', 'SPEECH_COMMAND'];
 const PRESS_DEDUPE_MS = 400;
@@ -49,9 +49,9 @@ function isTrue(raw) {
 function readSettings() {
     try {
         const s = JSON.parse(fs.readFileSync(SETTINGS, 'utf8'));
-        return { enabled: s.enabled !== false, theme: typeof s.theme === 'string' ? s.theme : 'christmas' };
+        return { enabled: s.enabled !== false, glow: s.glow !== false, theme: typeof s.theme === 'string' ? s.theme : 'christmas' };
     } catch (e) {
-        return { enabled: true, theme: 'christmas' };
+        return { enabled: true, glow: true, theme: 'christmas' };
     }
 }
 
@@ -102,6 +102,7 @@ class Themes extends OnlineApp {
                 app: APP_ID, assets, theme: this._settings.theme, logger, socket: process.env.CLUSTER_RENDER_SOCKET
             });
             this._theme.load();
+            this._theme.levelsOn(this._settings.glow);
             this._theme.on('renderer', (s) => { this._renderer = s; this._render(); });
             this._theme.on('target', (state) => { this._target = state; this._render(); });
             this._theme.start();
@@ -167,6 +168,13 @@ class Themes extends OnlineApp {
             writeSettings(this._settings);
             logger.info(`theme turned ${this._settings.enabled ? 'on' : 'off'}`);
             this._applyGate();
+            this._render(true);
+        });
+        this._bind(C.glow, () => {
+            this._settings.glow = !this._settings.glow;
+            writeSettings(this._settings);
+            logger.info(`glow turned ${this._settings.glow ? 'on' : 'off'}`);
+            if (this._theme) this._theme.levelsOn(this._settings.glow);
             this._render(true);
         });
         rhmi.on('userEvent', (ev) => {
@@ -242,6 +250,7 @@ class Themes extends OnlineApp {
         this._statusText = status;
         this._write(C.status, 'Text', status);
         this._write(C.toggle, BUTTON_CELL, this._settings.enabled ? 'Turn theme off' : 'Turn theme on');
+        this._write(C.glow, BUTTON_CELL, this._settings.glow ? 'Turn glow off' : 'Turn glow on');
         const name = this._theme && this._theme.theme ? this._theme.theme.name : this._settings.theme;
         this._write(C.theme, 'Text', `Theme: ${name}`);
     }

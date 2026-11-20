@@ -268,8 +268,26 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const visible = () => Array.from(layers.values()).filter((l) => l.visible).length;
 const status = () => shown.themesStatus && shown.themesStatus.Text;
 const MPH = 1 / 0.621371;
-const { aim } = require('../src/cluster.js');
+const { aim, levelBand } = require('../src/cluster.js');
 const theme = JSON.parse(fs.readFileSync(path.join(APP, 'package', 'assets', 'christmas', 'theme.json'), 'utf8'));
+/* The level band lit exactly up to value: every band pixel at or below it, none above. */
+const bands = {};
+function levelAt(g, value) {
+    const b = bands[g] || (bands[g] = levelBand(theme[g], theme.level));
+    const l = Array.from(layers.values()).find((q) => q.x === b.x && q.y === b.y && q.iw === b.w && q.ih === b.h);
+    if (!l) { fail(`no level layer for ${g}`); return; }
+    let wrong = 0, lit = 0;
+    for (let k = 0; k < b.idx.length; k++) {
+        const a = l.img[b.idx[k] * 4 + 3], want = b.val[k] <= value ? b.rgba[b.idx[k] * 4 + 3] : 0;
+        if (Math.abs(b.val[k] - value) < 0.01) continue;   // exactly at the value: either is right
+        if (a !== want) wrong++;
+        if (a) lit++;
+    }
+    if (wrong) fail(`${g} level at ${value}: ${wrong} of ${b.idx.length} pixels wrong`);
+    if (value > 0 && !lit) fail(`${g} level at ${value}: nothing lit`);
+    return lit;
+}
+
 function needleAt(g, value) {
     const want = aim(theme[g], value), refs = Array.from(layers.values()).filter((l) => l.iw === theme.needle.length + 16);
     const l = refs[g === 'speed' ? 0 : 1];
@@ -296,7 +314,7 @@ async function run() {
     await wait(1500);
     step('started, no car data');
     if (!stats.hellos) fail('the app never said hello to cluster-render');
-    if (layers.size !== 8) fail(`${layers.size} layers, expected 8 (plate, 2 needles, 2 hubs, 3 readouts)`);
+    if (layers.size !== 10) fail(`${layers.size} layers, expected 10 (plate, 2 levels, 2 needles, 2 hubs, 3 readouts)`);
     if (visible()) fail('layers visible before the car sent a speed');
     if (availability !== 'ENABLED') fail(`tile ${availability}`);
 
@@ -305,13 +323,13 @@ async function run() {
     step('parked, engine idling');
     if (visible() !== layers.size) fail('not all layers visible with a fresh speed');
     if (targetState !== 'shown') fail(`target ${targetState} after showing`);
-    needleAt('speed', 0); needleAt('rpm', 780);
+    needleAt('speed', 0); needleAt('rpm', 780); levelAt('speed', 0); levelAt('rpm', 780);
     console.log(`    ${snapshot('1-parked.png')}`);
 
     drive({ speedKmh: 60 * MPH, rpm: 1800, stage: 'D', gearWire: 5 });
     await wait(800);
     step('60 mph, 1,800 rpm, D (the render\'s own values)');
-    needleAt('speed', 60); needleAt('rpm', 1800);
+    needleAt('speed', 60); needleAt('rpm', 1800); levelAt('speed', 60); levelAt('rpm', 1800);
     if (textInk(theme.readouts.speed.box) <= 0) fail('the speed readout has no text');
     if (textInk(theme.readouts.gear.box) <= 0) fail('the gear readout has no text');
     console.log(`    ${snapshot('2-60mph.png')}`);
@@ -319,13 +337,13 @@ async function run() {
     drive({ speedKmh: 180 * MPH, rpm: 7000, stage: 'D', gearWire: 10 });
     await wait(800);
     step('180 mph, 7,000 rpm');
-    needleAt('speed', 180); needleAt('rpm', 7000);
+    needleAt('speed', 180); needleAt('rpm', 7000); levelAt('speed', 180); levelAt('rpm', 7000);
     console.log(`    ${snapshot('3-180mph.png')}`);
 
     drive({ speedKmh: 35 * MPH, rpm: 2600, stage: 'R', gearWire: 1 });
     await wait(800);
     step('35 mph in R');
-    needleAt('speed', 35); needleAt('rpm', 2600);
+    needleAt('speed', 35); needleAt('rpm', 2600); levelAt('speed', 35); levelAt('rpm', 2600);
     console.log(`    ${snapshot('4-35mph-R.png')}`);
 
     car.online = false;
@@ -354,12 +372,28 @@ async function run() {
     step('turned on again');
     if (visible() !== layers.size) fail('layers not visible after Turn theme on');
 
+    await wait(450);
+    byName.themesGlow.emit('action', { row: 0 });
+    await wait(500);
+    step('glow turned off on the page');
+    if (visible() !== layers.size - 2) fail(`${visible()} of ${layers.size} layers visible with the glow off, expected all but the 2 levels`);
+    saved = null;
+    try { saved = JSON.parse(fs.readFileSync(path.join(DATA, 'settings.json'), 'utf8')); } catch (e) { /* checked below */ }
+    if (!saved || saved.glow !== false || saved.enabled !== true) fail(`settings.json after glow off: ${JSON.stringify(saved)}`);
+    if (shown.themesGlow.Text !== 'Turn glow on') fail(`glow button reads "${shown.themesGlow.Text}"`);
+    console.log(`    ${snapshot('6-glow-off.png')}`);
+    await wait(450);
+    byName.themesGlow.emit('action', { row: 0 });
+    await wait(500);
+    step('glow turned on again');
+    if (visible() !== layers.size) fail('levels not visible after Turn glow on');
+
     const hellos = stats.hellos;
     sockets.forEach((s) => s.destroy());
     await wait(2500);
     step('cluster-render restarted');
     if (stats.hellos <= hellos) fail('the client did not reconnect');
-    if (layers.size !== 8 || !Array.from(layers.values()).every((l) => l.have)) fail('layers or their pixels not made again after the restart');
+    if (layers.size !== 10 || !Array.from(layers.values()).every((l) => l.have)) fail('layers or their pixels not made again after the restart');
     if (visible() !== layers.size || targetState !== 'shown') fail('not shown again after the restart');
     needleAt('speed', 50);
     console.log(`    ${snapshot('5-after-restart-50mph.png')}`);

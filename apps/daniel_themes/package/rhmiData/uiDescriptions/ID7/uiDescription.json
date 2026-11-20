@@ -88,6 +88,28 @@
               }
             }
           ]
+        },
+        "23": {
+          "type": "button",
+          "name": "themesGlow",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_TURN_GLOW_OFF",
+                "type": "StringId"
+              }
+            }
+          ]
         }
       }
     }

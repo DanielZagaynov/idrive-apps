@@ -4,6 +4,8 @@
  * cluster-render's `panel` target, 1920x720, drawn over BMW's gauges):
  *
  *   plate      the theme's artwork without needles or readouts (image, sent once)
+ *   levels     a band along each scale, lit from zero up to the value
+ *              (theme.json "level"), redrawn where it changes
  *   needles    one image each, turned and stretched about its gauge's pivot
  *              so its tip stops just short of the number for the value
  *              (theme.json "points": where each number sits on the scale)
@@ -29,6 +31,7 @@ const TEXT_MS = 250;           // readouts at most 4 times a second
 const MIN_DEG = 0.2;           // smaller needle moves are not sent
 const MIN_SCALE = 0.002;
 const KMH_TO_MPH = 0.621371;
+const LEVEL_MS = 50;           // levels at most 20 times a second
 
 /* Where the needle for value v points: angle (degrees clockwise from the
  * right, on screen) and length from the pivot. Between two numbers it aims
@@ -42,6 +45,76 @@ function aim(scale, v) {
     const x = p[i][1] + (p[i + 1][1] - p[i][1]) * t, y = p[i][2] + (p[i + 1][2] - p[i][2]) * t;
     const dx = x - scale.pivot[0], dy = y - scale.pivot[1];
     return { rotate: Math.atan2(dy, dx) * 180 / Math.PI, length: Math.max(0, Math.hypot(dx, dy) - (scale.margin || 0)) };
+}
+
+function hex(c) {
+    const n = parseInt(String(c).replace('#', ''), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/* The band that fills along a scale: every pixel of it with the value at
+ * which it lights. A pixel's value is where the ray from the pivot through
+ * it crosses the scale's track (the straight lines joining the numbers,
+ * the line the needle follows), so the band ends exactly under the needle.
+ * Returns { x, y, w, h, rgba, idx (pixel offsets in the box, by value), val, top }. */
+function levelBand(scale, lv) {
+    const p = scale.points, pv = scale.pivot, top = p[p.length - 1][0];
+    const ang = [];
+    p.forEach((q, i) => {
+        let a = Math.atan2(q[2] - pv[1], q[1] - pv[0]);
+        if (i) { while (a - ang[i - 1] > Math.PI) a -= 2 * Math.PI; while (a - ang[i - 1] < -Math.PI) a += 2 * Math.PI; }
+        ang.push(a);
+    });
+    const dir = ang[ang.length - 1] > ang[0] ? 1 : -1;
+    const lo = Math.min(ang[0], ang[ang.length - 1]), hi = Math.max(ang[0], ang[ang.length - 1]);
+    const near = lv.inner - lv.glow, far = lv.inner + lv.width + lv.glow;
+    let x0 = pv[0], y0 = pv[1], x1 = pv[0], y1 = pv[1];
+    p.forEach((q) => { x0 = Math.min(x0, q[1]); y0 = Math.min(y0, q[2]); x1 = Math.max(x1, q[1]); y1 = Math.max(y1, q[2]); });
+    const pad = Math.max(0, -near) + 2;           // a band outside the numbers reaches past them
+    x0 = Math.max(0, Math.floor(x0 - pad)); y0 = Math.max(0, Math.floor(y0 - pad));
+    x1 = Math.min(1920, Math.ceil(x1 + pad)); y1 = Math.min(720, Math.ceil(y1 + pad));
+    const w = x1 - x0, h = y1 - y0, c0 = hex(lv.from), c1 = hex(lv.to), alpha = lv.alpha == null ? 1 : lv.alpha;
+    const rgba = Buffer.alloc(w * h * 4), offs = [], vals = [];
+    const edge = (d, a, b) => Math.max(0, Math.min(1, (d - a) / (b - a)));
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const dx = x0 + x + 0.5 - pv[0], dy = y0 + y + 0.5 - pv[1];
+            let a = Math.atan2(dy, dx);
+            while (a < lo) a += 2 * Math.PI;
+            while (a > hi) a -= 2 * Math.PI;
+            if (a < lo) continue;
+            let i = 0;
+            while (i < ang.length - 2 && (a - ang[i + 1]) * dir > 0) i++;
+            /* where the ray crosses the line from number i to number i+1 */
+            const ax = p[i][1] - pv[0], ay = p[i][2] - pv[1], bx = p[i + 1][1] - pv[0], by = p[i + 1][2] - pv[1];
+            const ux = Math.cos(a), uy = Math.sin(a), ex = bx - ax, ey = by - ay, den = ux * ey - uy * ex;
+            if (Math.abs(den) < 1e-9) continue;
+            const R = (ax * ey - ay * ex) / den, t = Math.max(0, Math.min(1, (ax * uy - ay * ux) / den));
+            if (R <= 0) continue;
+            const d = R - Math.hypot(dx, dy);            // px inside the numbers' line
+            if (d < near || d > far) continue;
+            const core = Math.min(edge(d, lv.inner - 1, lv.inner + 1), 1 - edge(d, lv.inner + lv.width - 1, lv.inner + lv.width + 1));
+            const out = d < lv.inner ? (lv.inner - d) / lv.glow : Math.max(0, d - lv.inner - lv.width) / lv.glow;
+            const glow = 0.35 * Math.pow(Math.max(0, 1 - out), 2);
+            const al = alpha * Math.max(core, glow);
+            if (al <= 0.004) continue;
+            const v = p[i][0] + (p[i + 1][0] - p[i][0]) * t, f = Math.max(0, Math.min(1, v / top)), o = (y * w + x) * 4;
+            rgba[o] = Math.round(c0[0] + (c1[0] - c0[0]) * f);
+            rgba[o + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * f);
+            rgba[o + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * f);
+            rgba[o + 3] = Math.round(al * 255);
+            offs.push(y * w + x); vals.push(v);
+        }
+    }
+    const order = offs.map((_, k) => k).sort((m, n) => vals[m] - vals[n]);
+    return { x: x0, y: y0, w, h, rgba, idx: Int32Array.from(order.map((k) => offs[k])), val: Float32Array.from(order.map((k) => vals[k])), top };
+}
+
+/* How many of the band's pixels (sorted by value) light at value v. */
+function litCount(band, v) {
+    let a = 0, b = band.val.length;
+    while (a < b) { const m = (a + b) >> 1; if (band.val[m] <= v) a = m + 1; else b = m; }
+    return a;
 }
 
 function withCommas(n) {
@@ -78,6 +151,9 @@ class ClusterTheme extends EventEmitter {
         this.cr = null;
         this.refs = {};
         this.readouts = {};
+        this.levels = {};
+        this.lastLevel = 0;
+        this.levelsShown = true;
         this.shown = false;
         this.data = {};
         this.sent = {};
@@ -97,6 +173,12 @@ class ClusterTheme extends EventEmitter {
         this.needle = decode(read('needle.png'));
         this.hubs = { speed: decode(read('hub_speed.png')), rpm: decode(read('hub_rpm.png')) };
         const fonts = JSON.parse(read('glyphs.json').toString('utf8'));
+        if (this.theme.level) {
+            ['speed', 'rpm'].forEach((g) => {
+                const b = levelBand(this.theme[g], this.theme.level);
+                this.levels[g] = { band: b, img: Buffer.alloc(b.w * b.h * 4), lit: 0 };
+            });
+        }
         Object.keys(this.theme.readouts).forEach((k) => {
             const r = this.theme.readouts[k];
             this.readouts[k] = { def: r, font: glyphs.unpack(fonts[k]), w: r.box[2], h: r.box[3],
@@ -111,19 +193,24 @@ class ClusterTheme extends EventEmitter {
         const t = this.theme, base = { target: TARGET, klass: 'content', visible: false };
         this.refs.plate = cr.image(Object.assign({}, base, { z: 0, x: 0, y: 0, w: 1920, h: 720 }));
         cr.pixels(this.refs.plate, null, this.plate.data);
+        Object.keys(this.levels).forEach((g) => {
+            const l = this.levels[g], b = l.band;
+            this.refs[`level_${g}`] = cr.image(Object.assign({}, base, { z: 1, x: b.x, y: b.y, w: b.w, h: b.h }));
+            cr.pixels(this.refs[`level_${g}`], null, l.img);
+        });
         ['speed', 'rpm'].forEach((g) => {
             const pv = t[g].pivot, n = t.needle, hr = t.hubRadius;
             const ref = this.refs[`needle_${g}`] = cr.image(Object.assign({}, base, {
-                z: 1, x: pv[0] - n.pivotX, y: pv[1] - n.pivotY, w: this.needle.width, h: this.needle.height,
+                z: 2, x: pv[0] - n.pivotX, y: pv[1] - n.pivotY, w: this.needle.width, h: this.needle.height,
                 px: n.pivotX, py: n.pivotY, rotate: 0, sx: 1, sampling: 'bilinear' }));
             cr.pixels(ref, null, this.needle.data);
             const hub = this.refs[`hub_${g}`] = cr.image(Object.assign({}, base, {
-                z: 2, x: pv[0] - hr, y: pv[1] - hr, w: this.hubs[g].width, h: this.hubs[g].height }));
+                z: 3, x: pv[0] - hr, y: pv[1] - hr, w: this.hubs[g].width, h: this.hubs[g].height }));
             cr.pixels(hub, null, this.hubs[g].data);
         });
         Object.keys(this.readouts).forEach((k) => {
             const r = this.readouts[k], b = r.def.box;
-            this.refs[`text_${k}`] = cr.image(Object.assign({}, base, { z: 1, x: b[0], y: b[1], w: b[2], h: b[3] }));
+            this.refs[`text_${k}`] = cr.image(Object.assign({}, base, { z: 2, x: b[0], y: b[1], w: b[2], h: b[3] }));
             cr.pixels(this.refs[`text_${k}`], null, r.img);
         });
         Object.keys(this.refs).forEach((k) => { if (!this.refs[k]) throw new Error(`cluster-render client refused layer ${k}`); });
@@ -156,12 +243,19 @@ class ClusterTheme extends EventEmitter {
 
     update(d) { this.data = d || {}; }
 
+    /* The level bands (the glow) on or off; the rest of the theme stays. */
+    levelsOn(on) {
+        this.levelsShown = !!on;
+        if (!this.cr || !this.shown) return;
+        Object.keys(this.levels).forEach((g) => this.cr.set(this.refs[`level_${g}`], { visible: this.levelsShown }));
+    }
+
     show(on) {
         if (!this.cr || on === this.shown) return;
         this.shown = on;
         this.log.info(on ? 'theme on the cluster' : 'theme off the cluster');
-        if (on) { this.sent = {}; this.lastText = 0; this._tick(); }
-        Object.keys(this.refs).forEach((k) => this.cr.set(this.refs[k], { visible: on }));
+        if (on) { this.sent = {}; this.lastText = 0; this.lastLevel = 0; this._tick(); }
+        Object.keys(this.refs).forEach((k) => this.cr.set(this.refs[k], { visible: on && (this.levelsShown || k.indexOf('level_') !== 0) }));
     }
 
     _tick() {
@@ -171,6 +265,11 @@ class ClusterTheme extends EventEmitter {
         this._needle('speed', aim(t.speed, spd));
         this._needle('rpm', aim(t.rpm, typeof d.rpm === 'number' ? d.rpm : 0));
         const now = Date.now();
+        if (now - this.lastLevel >= LEVEL_MS) {
+            this.lastLevel = now;
+            if (this.levels.speed) this._level('speed', spd);
+            if (this.levels.rpm) this._level('rpm', typeof d.rpm === 'number' ? d.rpm : 0);
+        }
         if (now - this.lastText >= TEXT_MS) {
             this.lastText = now;
             const tx = texts(t, d);
@@ -183,6 +282,26 @@ class ClusterTheme extends EventEmitter {
         if (last && Math.abs(last.rotate - a.rotate) < MIN_DEG && Math.abs(last.sx - sx) < MIN_SCALE) return;
         this.sent[g] = { rotate: a.rotate, sx };
         this.cr.set(this.refs[`needle_${g}`], { rotate: Math.round(a.rotate * 100) / 100, sx: Math.round(sx * 1000) / 1000 });
+    }
+
+    /* Lights the band up to v; sends only the box around the pixels that changed. */
+    _level(g, v) {
+        const l = this.levels[g], b = l.band, n = litCount(b, Math.max(0, v));
+        if (n === l.lit) return;
+        const from = Math.min(n, l.lit), to = Math.max(n, l.lit), on = n > l.lit;
+        let x0 = b.w, y0 = b.h, x1 = 0, y1 = 0;
+        for (let k = from; k < to; k++) {
+            const i = b.idx[k], x = i % b.w, y = (i / b.w) | 0, o = i * 4;
+            if (on) b.rgba.copy(l.img, o, o, o + 4); else l.img.fill(0, o, o + 4);
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+        }
+        l.lit = n;
+        const rw = x1 - x0 + 1, rows = [];
+        for (let y = y0; y <= y1; y++) rows.push(l.img.slice((y * b.w + x0) * 4, (y * b.w + x0 + rw) * 4));
+        this.cr.pixels(this.refs[`level_${g}`], [{ x: x0, y: y0, w: rw, h: y1 - y0 + 1 }], Buffer.concat(rows));
     }
 
     /* Redraws a readout; sends only the columns the old and new text cover. */
@@ -207,4 +326,4 @@ class ClusterTheme extends EventEmitter {
     }
 }
 
-module.exports = { ClusterTheme, aim, texts, findAssets, TARGET };
+module.exports = { ClusterTheme, aim, texts, levelBand, litCount, findAssets, TARGET };

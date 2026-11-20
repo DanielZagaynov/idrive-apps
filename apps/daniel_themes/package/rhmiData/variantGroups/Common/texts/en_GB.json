@@ -4,5 +4,6 @@
   "SID_THEMES_CLUSTER_THEMES": "Cluster Themes",
   "SID_THEMES_STARTING": "Starting",
   "SID_THEMES_THEME": "Theme",
-  "SID_THEMES_TURN_THEME_OFF": "Turn theme off"
+  "SID_THEMES_TURN_THEME_OFF": "Turn theme off",
+  "SID_THEMES_TURN_GLOW_OFF": "Turn glow off"
 }
