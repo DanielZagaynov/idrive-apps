@@ -269,9 +269,10 @@ const visible = () => Array.from(layers.values()).filter((l) => l.visible).lengt
 const status = () => shown.themesStatus && shown.themesStatus.Text;
 const MPH = 1 / 0.621371;
 const { aim, levelBand } = require('../src/cluster.js');
-const theme = JSON.parse(fs.readFileSync(path.join(APP, 'package', 'assets', 'christmas', 'theme.json'), 'utf8'));
+const themeOf = (id) => JSON.parse(fs.readFileSync(path.join(APP, 'package', 'assets', id, 'theme.json'), 'utf8'));
+let theme = themeOf('christmas');
 /* The level band lit exactly up to value: every band pixel at or below it, none above. */
-const bands = {};
+let bands = {};
 function levelAt(g, value) {
     const b = bands[g] || (bands[g] = levelBand(theme[g], theme.level));
     const l = Array.from(layers.values()).find((q) => q.x === b.x && q.y === b.y && q.iw === b.w && q.ih === b.h);
@@ -387,6 +388,31 @@ async function run() {
     await wait(500);
     step('glow turned on again');
     if (visible() !== layers.size) fail('levels not visible after Turn glow on');
+
+    /* every theme from the page: its own plate, needles, levels and readouts */
+    const list = JSON.parse(fs.readFileSync(path.join(APP, 'package', 'assets', 'themes.json'), 'utf8')).themes;
+    for (const t of list.filter((x) => x.id !== 'christmas').concat([{ id: 'christmas' }])) {
+        await wait(450);
+        if (!byName[`themesPick_${t.id}`]) { fail(`no button for theme ${t.id}`); continue; }
+        byName[`themesPick_${t.id}`].emit('action', { row: 0 });
+        theme = themeOf(t.id); bands = {};
+        drive({ speedKmh: 90 * MPH, rpm: 5500, stage: 'D', gearWire: 6 });
+        await wait(1500);
+        step(`picked ${theme.name} at 90 mph, 5,500 rpm`);
+        const want = 1 + 2 + 2 + 2 + Object.keys(theme.readouts).length;
+        if (layers.size !== want) fail(`${theme.id}: ${layers.size} layers, expected ${want}`);
+        if (visible() !== layers.size || targetState !== 'shown') fail(`${theme.id}: not shown after picking it`);
+        needleAt('speed', 90); needleAt('rpm', 5500); levelAt('speed', 90); levelAt('rpm', 5500);
+        if (textInk(theme.readouts.speed.box) <= 0) fail(`${theme.id}: the speed readout has no text`);
+        let picked = null;
+        try { picked = JSON.parse(fs.readFileSync(path.join(DATA, 'settings.json'), 'utf8')); } catch (e) { /* checked below */ }
+        if (!picked || picked.theme !== theme.id) fail(`settings.json after picking ${theme.id}: ${JSON.stringify(picked)}`);
+        const btn = shown[`themesPick_${theme.id}`];
+        if (!btn || !/\(selected\)$/.test(btn.Text)) fail(`${theme.id} button reads "${btn && btn.Text}"`);
+        if (theme.id !== 'christmas') console.log(`    ${snapshot(`7-${theme.id}.png`)}`);
+    }
+    drive({ speedKmh: 50 * MPH, rpm: 2000, stage: 'D', gearWire: 4 });
+    await wait(600);
 
     const hellos = stats.hellos;
     sockets.forEach((s) => s.destroy());

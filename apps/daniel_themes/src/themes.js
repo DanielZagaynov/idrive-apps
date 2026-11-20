@@ -4,7 +4,8 @@
  * live needles and readouts: speed, rpm and gear from the car
  * (src/car.js), drawn through cluster-render (src/cluster.js). Starts with
  * the head unit (mguAppStartType autostart); its tile opens one page to
- * turn the theme on or off and to see what it is doing.
+ * turn the theme and its glow on or off, pick the theme (one button per
+ * theme in assets/themes.json) and see what it is doing.
  *
  * The rule that keeps it safe: the theme is on the cluster only while the
  * car's speed is known and fresh (read within 2.5 s). Without it (no
@@ -82,6 +83,7 @@ class Themes extends OnlineApp {
         this._target = '';
         this._started = Date.now();
         this._statusText = '';
+        this._themes = [];
 
         this.on('initialized', () => {
             this._startCluster();
@@ -97,23 +99,53 @@ class Themes extends OnlineApp {
     _startCluster() {
         logger.info(`${APP_ID} starting, theme ${this._settings.theme} ${this._settings.enabled ? 'on' : 'off'}`);
         try {
-            const assets = findAssets(ASSET_DIRS);
-            this._theme = new ClusterTheme(ClusterRender, {
-                app: APP_ID, assets, theme: this._settings.theme, logger, socket: process.env.CLUSTER_RENDER_SOCKET
-            });
-            this._theme.load();
-            this._theme.levelsOn(this._settings.glow);
-            this._theme.on('renderer', (s) => { this._renderer = s; this._render(); });
-            this._theme.on('target', (state) => { this._target = state; this._render(); });
-            this._theme.start();
+            this._assets = findAssets(ASSET_DIRS);
+            this._themes = JSON.parse(fs.readFileSync(path.join(this._assets, 'themes.json'), 'utf8')).themes || [];
         } catch (e) {
             this._error = e.message;
-            this._theme = null;
-            logger.error(`theme not started: ${e.message}`);
+            logger.error(`no themes: ${e.message}`);
         }
+        if (this._themes.length && !this._themes.some((t) => t.id === this._settings.theme)) this._settings.theme = this._themes[0].id;
+        this._startTheme();
         this._car = new Car(someipBuilders, logger);
         this._car.start();
         this._gate = setInterval(() => this._applyGate(), GATE_MS);
+    }
+
+    /* Puts the picked theme's layers on cluster-render (hidden until the show rule says so). */
+    _startTheme() {
+        if (!this._assets) return;
+        this._error = '';
+        try {
+            const theme = new ClusterTheme(ClusterRender, {
+                app: APP_ID, assets: this._assets, theme: this._settings.theme, logger, socket: process.env.CLUSTER_RENDER_SOCKET
+            });
+            theme.load();
+            theme.levelsOn(this._settings.glow);
+            theme.on('renderer', (s) => { if (theme === this._theme) { this._renderer = s; this._render(); } });
+            theme.on('target', (state) => { if (theme === this._theme) { this._target = state; this._render(); } });
+            this._theme = theme;
+            theme.start();
+        } catch (e) {
+            this._error = e.message;
+            this._theme = null;
+            logger.error(`theme ${this._settings.theme} not started: ${e.message}`);
+        }
+    }
+
+    /* Another theme: the old one's layers go, the new one's come (shown by the next gate). */
+    _pickTheme(id) {
+        if (id === this._settings.theme && this._theme) return;
+        this._settings.theme = id;
+        writeSettings(this._settings);
+        logger.info(`theme ${id} picked`);
+        if (this._theme) this._theme.stop();
+        this._theme = null;
+        this._renderer = 'connecting';
+        this._target = '';
+        this._startTheme();
+        this._applyGate();
+        this._render(true);
     }
 
     /* The one place that decides whether the theme is on the cluster. */
@@ -176,6 +208,12 @@ class Themes extends OnlineApp {
             logger.info(`glow turned ${this._settings.glow ? 'on' : 'off'}`);
             if (this._theme) this._theme.levelsOn(this._settings.glow);
             this._render(true);
+        });
+        this._themes.forEach((t) => {
+            const name = `themesPick_${t.id}`;
+            this._components[name] = rhmi.getByName(name);
+            if (!this._components[name]) logger.warn(`${name} not found in uiDescription`);
+            this._bind(name, () => this._pickTheme(t.id));
         });
         rhmi.on('userEvent', (ev) => {
             const entry = ev && ev.eventType === 'ACTION' && this._actionById[Number(ev.sourceId)];
@@ -251,8 +289,9 @@ class Themes extends OnlineApp {
         this._write(C.status, 'Text', status);
         this._write(C.toggle, BUTTON_CELL, this._settings.enabled ? 'Turn theme off' : 'Turn theme on');
         this._write(C.glow, BUTTON_CELL, this._settings.glow ? 'Turn glow off' : 'Turn glow on');
-        const name = this._theme && this._theme.theme ? this._theme.theme.name : this._settings.theme;
-        this._write(C.theme, 'Text', `Theme: ${name}`);
+        const picked = this._themes.find((t) => t.id === this._settings.theme);
+        this._write(C.theme, 'Text', `Theme: ${picked ? picked.name : this._settings.theme}`);
+        this._themes.forEach((t) => this._write(`themesPick_${t.id}`, BUTTON_CELL, `${t.name}${t.id === this._settings.theme ? ' (selected)' : ''}`));
     }
 
     _write(name, cell, text) {

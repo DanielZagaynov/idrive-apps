@@ -74,6 +74,7 @@ function levelBand(scale, lv) {
     x0 = Math.max(0, Math.floor(x0 - pad)); y0 = Math.max(0, Math.floor(y0 - pad));
     x1 = Math.min(1920, Math.ceil(x1 + pad)); y1 = Math.min(720, Math.ceil(y1 + pad));
     const w = x1 - x0, h = y1 - y0, c0 = hex(lv.from), c1 = hex(lv.to), alpha = lv.alpha == null ? 1 : lv.alpha;
+    const cr = lv.red && typeof scale.redFrom === 'number' ? hex(lv.red) : null;
     const rgba = Buffer.alloc(w * h * 4), offs = [], vals = [];
     const edge = (d, a, b) => Math.max(0, Math.min(1, (d - a) / (b - a)));
     for (let y = 0; y < h; y++) {
@@ -99,9 +100,10 @@ function levelBand(scale, lv) {
             const al = alpha * Math.max(core, glow);
             if (al <= 0.004) continue;
             const v = p[i][0] + (p[i + 1][0] - p[i][0]) * t, f = Math.max(0, Math.min(1, v / top)), o = (y * w + x) * 4;
-            rgba[o] = Math.round(c0[0] + (c1[0] - c0[0]) * f);
-            rgba[o + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * f);
-            rgba[o + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * f);
+            const red = cr && v >= scale.redFrom;      // the scale's red zone keeps its colour when lit
+            rgba[o] = red ? cr[0] : Math.round(c0[0] + (c1[0] - c0[0]) * f);
+            rgba[o + 1] = red ? cr[1] : Math.round(c0[1] + (c1[1] - c0[1]) * f);
+            rgba[o + 2] = red ? cr[2] : Math.round(c0[2] + (c1[2] - c0[2]) * f);
             rgba[o + 3] = Math.round(al * 255);
             offs.push(y * w + x); vals.push(v);
         }

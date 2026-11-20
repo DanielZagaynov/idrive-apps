@@ -27,8 +27,21 @@ open.
   car sends a speed.
 - Its tile, **Cluster Themes**, opens one page: what the theme is doing
   ("On the cluster", "Hidden: no speed from the car yet", "Waiting for
-  Cluster renderer…"), **Turn theme off / on** and **Turn glow off / on**
-  (the level bands), both remembered.
+  Cluster renderer…"), **Turn theme off / on**, **Turn glow off / on**
+  (the level bands), and one button per theme to pick it ("(selected)" on
+  the one in use). All three choices are remembered.
+
+## The themes
+
+| Theme | From |
+|---|---|
+| Christmas Wood | the render and its clean plate (`assets/christmas_*`), placed by hand in `themes/christmas.json` |
+| Classic Blue, Track Tri-Stripe, Stealth, Sunset Drive, Glacier | the designer's presets, exported by `node tools/export_designer.js` (Edge or Chrome, headless): `assets/<id>_plate.png` and `themes/<id>.json` |
+
+To change one of the five, change its preset in `designer/index.html`
+(`DEFAULTS`), then `node tools/export_designer.js` and
+`node tools/build_assets.js`. The lit arc of those gauges is the level
+band, so Turn glow off leaves them with their needle and number only.
 
 ## The clean plate (needed before installing)
 

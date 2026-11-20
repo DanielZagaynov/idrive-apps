@@ -110,6 +110,138 @@
               }
             }
           ]
+        },
+        "30": {
+          "type": "button",
+          "name": "themesPick_christmas",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_CHRISTMAS_WOOD",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "31": {
+          "type": "button",
+          "name": "themesPick_classic",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_CLASSIC_BLUE",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "32": {
+          "type": "button",
+          "name": "themesPick_glacier",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_GLACIER",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "33": {
+          "type": "button",
+          "name": "themesPick_stealth",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_STEALTH",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "34": {
+          "type": "button",
+          "name": "themesPick_sunset",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_SUNSET_DRIVE",
+                "type": "StringId"
+              }
+            }
+          ]
+        },
+        "35": {
+          "type": "button",
+          "name": "themesPick_track",
+          "properties": {
+            "Visible": {
+              "value": 1,
+              "type": "UInt"
+            },
+            "Focusable": {
+              "value": 3,
+              "type": "UInt"
+            }
+          },
+          "rows": [
+            {
+              "Text": {
+                "value": "SID_THEMES_TRACK_TRI_STRIPE",
+                "type": "StringId"
+              }
+            }
+          ]
         }
       }
     }

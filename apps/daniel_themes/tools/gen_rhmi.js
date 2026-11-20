@@ -22,7 +22,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const PKG = path.join(__dirname, '..', 'package');
+const APP = path.join(__dirname, '..');
+const PKG = path.join(APP, 'package');
 const DIR = (hmi) => path.join(PKG, 'rhmiData', 'uiDescriptions', hmi);
 const TEXTS = path.join(PKG, 'rhmiData', 'variantGroups', 'Common', 'texts');
 const PREFIX = 'SID_THEMES_';
@@ -62,13 +63,18 @@ function state(id, name, titleId, title, parent, components) {
 
 const TITLE = 'Cluster Themes';      // the tile's and the main page's title (SID_THEMES_TITLE)
 
+/* One button per theme (themes/*.json, sorted by file name like the car's
+ * assets/themes.json): themesPick_<id>, showing the theme's name. */
+const THEMES = fs.readdirSync(path.join(APP, 'themes')).filter((f) => f.endsWith('.json')).sort()
+    .map((f) => JSON.parse(fs.readFileSync(path.join(APP, 'themes', f), 'utf8')));
+
 const STATES = [
     state(1, 'ST_Themes_Main', 10, TITLE, null, [
         text(20, 'themesStatus', 'Starting'),
-        label(21, 'themesTheme', 'Theme'),
         button(22, 'themesToggle', 'Turn theme off'),
-        button(23, 'themesGlow', 'Turn glow off')
-    ])
+        button(23, 'themesGlow', 'Turn glow off'),
+        label(21, 'themesTheme', 'Theme')
+    ].concat(THEMES.map((t, i) => button(30 + i, `themesPick_${t.id}`, t.name))))
 ];
 
 function statesFor(hmi) {

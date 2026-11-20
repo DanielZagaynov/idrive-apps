@@ -3,6 +3,26 @@
     {
       "id": "christmas",
       "name": "Christmas Wood"
+    },
+    {
+      "id": "classic",
+      "name": "Classic Blue"
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier"
+    },
+    {
+      "id": "stealth",
+      "name": "Stealth"
+    },
+    {
+      "id": "sunset",
+      "name": "Sunset Drive"
+    },
+    {
+      "id": "track",
+      "name": "Track Tri-Stripe"
     }
   ]
 }
