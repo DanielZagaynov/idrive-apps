@@ -4,7 +4,7 @@
  * with only zlib. Handles what tools/build_assets.js writes: 8-bit gray,
  * gray+alpha, RGB and RGBA, not interlaced, every filter type.
  *
- *   const { decode } = require('./png');
+ *   const { decode } = require('./png.js');
  *   const img = decode(fs.readFileSync(file));   // { width, height, data: Buffer w*h*4 }
  */
 const zlib = require('zlib');

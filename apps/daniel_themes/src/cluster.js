@@ -22,8 +22,8 @@
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
-const { decode } = require('./png');
-const glyphs = require('./glyphs');
+const { decode } = require('./png.js');
+const glyphs = require('./glyphs.js');
 
 const TARGET = 'panel';
 const SEND_MS = 33;            // needles at most ~30 times a second

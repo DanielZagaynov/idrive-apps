@@ -70,7 +70,9 @@ const modules = Array.isArray(m.modules) ? m.modules : [];
 const sdk = Array.isArray(m.sdk) ? m.sdk : [];
 if (!modules.length) fail('mgu-app.json: modules is empty');
 if (!sdk.length) fail('mgu-app.json: sdk is empty');
-const moduleNames = modules.map((f) => `./${path.basename(f, '.js')}`);
+/* The car's linker (mgu-store tools/oap_link.js) names each module
+ * ./<file name>.js and takes a relative require only by that exact name. */
+const moduleNames = modules.map((f) => `./${path.basename(f)}`);
 const sources = {};
 modules.forEach((rel) => {
     const file = path.join(APP, rel);
@@ -89,7 +91,7 @@ modules.forEach((rel) => {
     while ((hit = re.exec(src))) {
         const name = hit[1];
         const ok = sdk.indexOf(name) >= 0 || builtins.indexOf(name) >= 0 ||
-            moduleNames.indexOf(name) >= 0 || moduleNames.indexOf(name.replace(/\.js$/, '')) >= 0;
+            moduleNames.indexOf(name) >= 0;
         if (!ok) fail(`${rel}: require('${name}') is not a module, an sdk name or a Node builtin`);
     }
 });

@@ -21,9 +21,9 @@ const path = require('path');
 const OnlineApp = require('oap-sdk/src/core/OnlineApp.js');
 const logging = require('oap-sdk/src/logging/logging');
 const someipBuilders = require('oap-sdk/src/someip/someipBuilders');
-const { ClusterRender } = require('./cluster_render_client');
-const { ClusterTheme, findAssets } = require('./cluster');
-const { Car } = require('./car');
+const { ClusterRender } = require('./cluster_render_client.js');
+const { ClusterTheme, findAssets } = require('./cluster.js');
+const { Car } = require('./car.js');
 
 const logger = logging.getSDKLogger();
 
