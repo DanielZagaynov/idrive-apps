@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "daniel_themes",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "tree": "package",
   "modules": [
     "src/themes.js",

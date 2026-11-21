@@ -165,29 +165,66 @@ class ClusterTheme extends EventEmitter {
         this.targetState = '';
     }
 
-    /* Reads the theme's files. Throws when one is missing or broken. */
-    load() {
+    /* The steps that read the theme's files, each a few hundred ms of the
+     * car's CPU at most. Each throws when its file is missing or broken. */
+    _loadSteps() {
         const dir = path.join(this.o.assets, this.o.theme);
         const read = (f) => fs.readFileSync(path.join(dir, f));
-        this.theme = JSON.parse(read('theme.json').toString('utf8'));
-        this.plate = decode(read('plate.png'));
-        if (this.plate.width !== 1920 || this.plate.height !== 720) throw new Error(`plate is ${this.plate.width}x${this.plate.height}, not 1920x720`);
-        this.needle = decode(read('needle.png'));
-        this.hubs = { speed: decode(read('hub_speed.png')), rpm: decode(read('hub_rpm.png')) };
-        const fonts = JSON.parse(read('glyphs.json').toString('utf8'));
-        if (this.theme.level) {
-            ['speed', 'rpm'].forEach((g) => {
-                const b = levelBand(this.theme[g], this.theme.level);
-                this.levels[g] = { band: b, img: Buffer.alloc(b.w * b.h * 4), lit: 0 };
-            });
-        }
-        Object.keys(this.theme.readouts).forEach((k) => {
-            const r = this.theme.readouts[k];
-            this.readouts[k] = { def: r, font: glyphs.unpack(fonts[k]), w: r.box[2], h: r.box[3],
-                img: Buffer.alloc(r.box[2] * r.box[3] * 4), text: null, span: null };
-        });
-        this.log.info(`theme ${this.theme.id}: ${this.theme.name} loaded${this.theme.plateIsRender ? ' (plate is the render: needles drawn twice)' : ''}`);
+        let fonts = null;
+        return [
+            () => { this.theme = JSON.parse(read('theme.json').toString('utf8')); },
+            () => {
+                this.plate = decode(read('plate.png'));
+                if (this.plate.width !== 1920 || this.plate.height !== 720) throw new Error(`plate is ${this.plate.width}x${this.plate.height}, not 1920x720`);
+            },
+            () => {
+                this.needle = decode(read('needle.png'));
+                this.hubs = { speed: decode(read('hub_speed.png')), rpm: decode(read('hub_rpm.png')) };
+            },
+            () => { fonts = JSON.parse(read('glyphs.json').toString('utf8')); },
+            () => this._makeLevel('speed'),
+            () => this._makeLevel('rpm'),
+            () => Object.keys(this.theme.readouts).forEach((k) => {
+                const r = this.theme.readouts[k];
+                this.readouts[k] = { def: r, font: glyphs.unpack(fonts[k]), w: r.box[2], h: r.box[3],
+                    img: Buffer.alloc(r.box[2] * r.box[3] * 4), text: null, span: null };
+            }),
+            () => this.log.info(`theme ${this.theme.id}: ${this.theme.name} loaded${this.theme.plateIsRender ? ' (plate is the render: needles drawn twice)' : ''}`)
+        ];
+    }
+
+    _makeLevel(g) {
+        if (!this.theme.level) return;
+        const b = levelBand(this.theme[g], this.theme.level);
+        this.levels[g] = { band: b, img: Buffer.alloc(b.w * b.h * 4), lit: 0 };
+    }
+
+    /* Reads the theme's files at once. Throws when one is missing or broken. */
+    load() {
+        this._loadSteps().forEach((s) => s());
         return this.theme;
+    }
+
+    /* The same, one step per turn of the event loop, so the app keeps
+     * answering MainApp (heartbeat, app status, the page) while it loads.
+     * Resolves with the theme; rejects when a file is missing or broken, or
+     * when stop() came first. */
+    loadAsync() {
+        const steps = this._loadSteps();
+        return new Promise((resolve, reject) => {
+            const next = () => {
+                if (this.stopped) { reject(new Error('stopped while loading')); return; }
+                if (!steps.length) { resolve(this.theme); return; }
+                try {
+                    steps.shift()();
+                } catch (e) {
+                    reject(e);
+                    return;
+                }
+                setImmediate(next);
+            };
+            setImmediate(next);
+        });
     }
 
     start() {
@@ -216,6 +253,10 @@ class ClusterTheme extends EventEmitter {
             cr.pixels(this.refs[`text_${k}`], null, r.img);
         });
         Object.keys(this.refs).forEach((k) => { if (!this.refs[k]) throw new Error(`cluster-render client refused layer ${k}`); });
+        /* The client keeps each picture whole (it sends them again after a
+         * reconnect): the decoded copies here are not needed any more, and
+         * the app stays inside its memory limit (package.json). */
+        this.plate = this.needle = this.hubs = null;
         const names = {};
         Object.keys(this.refs).forEach((k) => { names[this.refs[k]] = k; });
         cr.on('ready', () => { this.log.info(`cluster-render ready (${cr.backend}: ${cr.targets})`); this.emit('renderer', 'ready'); });
@@ -237,6 +278,7 @@ class ClusterTheme extends EventEmitter {
     }
 
     stop() {
+        this.stopped = true;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
         if (this.cr) this.cr.close();

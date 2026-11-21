@@ -35,7 +35,7 @@ const FOREGROUND_REASONS = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'T
 const PRESS_DEDUPE_MS = 400;
 const GATE_MS = 250;                    // how often the show rule is looked at
 const RENDERER_MISSING_MS = 15000;      // no answer from cluster-render this long: say it is not installed
-const CLUSTER_AFTER_MS = 4000;          // the theme starts by then even if the page setup has not finished
+const CLUSTER_AFTER_MS = 20000;         // the theme starts by then even if the page setup never finishes
 const HIDE_SETTLE_MS = 300;            // a page hidden this long (not shown again meanwhile) counts as gone
 
 /* Where the app keeps its files: next to its installed package on the car;
@@ -56,6 +56,26 @@ function readSettings() {
     } catch (e) {
         return { enabled: true, glow: true, theme: 'christmas' };
     }
+}
+
+/* MainApp starts apps with --expose-gc: the pictures' decoding leaves
+ * megabytes of garbage that would otherwise count against the app's memory
+ * limit until V8 gets round to it. */
+function freeMemory() {
+    let gc = typeof global.gc === 'function' ? global.gc : null;
+    if (!gc) {
+        /* The car's runner gives the app a copy of the globals, which may
+         * leave gc out: take it from the main context. */
+        try { gc = require('vm').runInThisContext('typeof gc === "function" ? gc : null'); } catch (e) { gc = null; }
+    }
+    if (gc) {
+        try { gc(); } catch (e) { /* not exposed */ }
+    }
+}
+
+function memory() {
+    const m = process.memoryUsage();
+    return `rss ${Math.round(m.rss / 1048576)} MiB, heap ${Math.round(m.heapUsed / 1048576)} MiB, buffers ${Math.round(m.external / 1048576)} MiB`;
 }
 
 function writeSettings(s) {
@@ -79,6 +99,7 @@ class Themes extends OnlineApp {
         this._stopping = null;
         this._settings = readSettings();
         this._theme = null;
+        this._loading = null;              // a theme still reading its files
         this._car = null;
         this._error = '';
         this._renderer = 'connecting';
@@ -93,9 +114,12 @@ class Themes extends OnlineApp {
          * status channel is up (idrive7-apps kit/runtime/mgu.js). */
         this.on('appStatusProxyReady', () => this._reportActive());
         this.on('changeVisibility', (data) => { if (data && data.visible === false) this._setVisible(false); });
-        /* The page first: decoding the theme's pictures takes seconds of the
-         * car's CPU (cpuLimit), and the HMI waits on an opened app meanwhile.
-         * The theme starts once the page is set up, or after CLUSTER_AFTER_MS. */
+        /* The page and the tile first: until the entry point is ENABLED and
+         * MainApp told the app is initialized, the HMI shows "Loading app".
+         * The theme (seconds of the car's CPU and most of the app's memory)
+         * starts once that is done, or after CLUSTER_AFTER_MS if it never is;
+         * 0.1.6 started it after 4 s whatever the page was doing, and the app
+         * never got its entry point registered on the car. */
         this.on('initialized', () => {
             this._loadThemeList();
             let started = false;
@@ -126,31 +150,48 @@ class Themes extends OnlineApp {
 
     _startCluster() {
         logger.info(`${APP_ID} starting, theme ${this._settings.theme} ${this._settings.enabled ? 'on' : 'off'}`);
-        this._startTheme();
         this._car = new Car(someipBuilders, logger);
         this._car.start();
         this._gate = setInterval(() => this._applyGate(), GATE_MS);
+        this._startTheme();
     }
 
-    /* Puts the picked theme's layers on cluster-render (hidden until the show rule says so). */
+    /* Puts the picked theme's layers on cluster-render (hidden until the show
+     * rule says so). Loads one picture per turn of the event loop; a theme
+     * picked meanwhile replaces the one still loading. */
     _startTheme() {
         if (!this._assets) return;
         this._error = '';
-        try {
-            const theme = new ClusterTheme(ClusterRender, {
-                app: APP_ID, assets: this._assets, theme: this._settings.theme, logger, socket: process.env.CLUSTER_RENDER_SOCKET
+        if (this._loading) this._loading.stop();
+        const id = this._settings.theme;
+        const theme = this._loading = new ClusterTheme(ClusterRender, {
+            app: APP_ID, assets: this._assets, theme: id, logger, socket: process.env.CLUSTER_RENDER_SOCKET
+        });
+        const t0 = Date.now();
+        this._render();
+        theme.loadAsync()
+            .then(() => {
+                if (theme !== this._loading || this._stopping) return;
+                this._loading = null;
+                theme.levelsOn(this._settings.glow);
+                theme.on('renderer', (s) => { if (theme === this._theme) { this._renderer = s; this._render(); } });
+                theme.on('target', (state) => { if (theme === this._theme) { this._target = state; this._render(); } });
+                this._theme = theme;
+                theme.start();
+                freeMemory();
+                logger.info(`theme ${id} on cluster-render after ${Date.now() - t0} ms, ${memory()}`);
+                this._applyGate();
+            })
+            .catch((e) => {
+                if (theme !== this._loading) return;   // replaced or stopped: not an error
+                this._loading = null;
+                theme.stop();
+                this._error = e.message;
+                this._theme = null;
+                freeMemory();
+                logger.error(`theme ${id} not started: ${e.message}`);
+                this._render(true);
             });
-            theme.load();
-            theme.levelsOn(this._settings.glow);
-            theme.on('renderer', (s) => { if (theme === this._theme) { this._renderer = s; this._render(); } });
-            theme.on('target', (state) => { if (theme === this._theme) { this._target = state; this._render(); } });
-            this._theme = theme;
-            theme.start();
-        } catch (e) {
-            this._error = e.message;
-            this._theme = null;
-            logger.error(`theme ${this._settings.theme} not started: ${e.message}`);
-        }
     }
 
     /* Another theme: the old one's layers go, the new one's come (shown by the next gate). */
@@ -190,6 +231,7 @@ class Themes extends OnlineApp {
     _status() {
         if (this._error) return `Theme could not load: ${this._error}`;
         if (!this._settings.enabled) return 'Off: BMW gauges on the cluster';
+        if (this._loading && !this._theme) return 'Loading the theme';
         if (this._renderer !== 'ready') {
             return Date.now() - this._started > RENDERER_MISSING_MS && this._renderer === 'connecting'
                 ? 'Waiting for Cluster renderer (install it from the Store: robertnisipeanu/idrive-apps)'
@@ -364,6 +406,7 @@ class Themes extends OnlineApp {
         if (this._stopping) return this._stopping;
         logger.info(`${APP_ID} shutting down (${reason})`);
         if (this._gate) clearInterval(this._gate);
+        if (this._loading) this._loading.stop();
         if (this._theme) this._theme.stop();
         if (this._car) this._car.stop();
         this._stopping = Promise.resolve()
