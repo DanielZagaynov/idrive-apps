@@ -15,6 +15,8 @@
  * has no getter (every read fails), its notifications alone count, and a
  * value seen once stays fresh while its interface is there.
  *
+ * The gear fields have no getter on the car (iDrive 7 interface database):
+ * package/manifest.json asks for them with "s", notifications only.
  * Interfaces and fields must be in package/manifest.json (tools/check.js
  * checks that).
  */

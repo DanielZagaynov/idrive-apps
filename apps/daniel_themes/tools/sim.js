@@ -163,10 +163,13 @@ function snapshot(name) {
 
 /* ---- the car stand-in ---- */
 const car = { online: true, v: {} };
+/* notifyOnly: the manifest asks for the field with "s" (the car's interface
+ * database has no getter for it), so every read is refused */
 class Attr {
-    constructor(get) { this.get = get; this.subs = []; }
+    constructor(get, notifyOnly) { this.get = get; this.subs = []; this.notifyOnly = !!notifyOnly; }
     subscribe(fn) { this.subs.push(fn); return Promise.resolve(); }
     getValue() {
+        if (this.notifyOnly) return Promise.reject(new Error('no getter'));
         if (!car.online) return Promise.reject(new Error('timeout'));
         const v = this.get();
         return v === undefined ? Promise.reject(new Error('no value yet')) : Promise.resolve(v);
@@ -176,8 +179,8 @@ class Attr {
 const attrs = {
     statusCarSpeed2: new Attr(() => (car.v.speedKmh === undefined ? undefined : { speedVehicleCentreOfGravity: Math.round(car.v.speedKmh / 0.015625) })),
     statusEngineSpeed2: new Attr(() => (car.v.rpm === undefined ? undefined : { actualValueRPMEngineCrankshaft: Math.round(car.v.rpm / 0.25) })),
-    statusGearboxDrive: new Attr(() => (car.v.stage === undefined ? undefined : { statusActualStageDrive: car.v.stage, statusActualGearDrive: car.v.gearWire })),
-    DataPowerTrain2: new Attr(() => undefined)
+    statusGearboxDrive: new Attr(() => (car.v.stage === undefined ? undefined : { statusActualStageDrive: car.v.stage, statusActualGearDrive: car.v.gearWire }), true),
+    DataPowerTrain2: new Attr(() => undefined, true)
 };
 const IFACES = {
     'de.bmw.infotainment.vehicle.Vehicle2': ['statusCarSpeed2'],
