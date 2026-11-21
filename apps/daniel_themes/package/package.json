@@ -1,6 +1,6 @@
 {
   "name": "daniel_themes",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Cluster themes: a full-cluster artwork with live needles and readouts (iDrive 7, needs Cluster renderer)",
   "private": false,
   "main": "javascript/runner.js",

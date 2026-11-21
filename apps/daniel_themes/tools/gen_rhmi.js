@@ -63,10 +63,10 @@ function state(id, name, titleId, title, parent, components) {
 
 const TITLE = 'Cluster Themes';      // the tile's and the main page's title (SID_THEMES_TITLE)
 
-/* One button per theme (themes/*.json, sorted by file name like the car's
- * assets/themes.json): themesPick_<id>, showing the theme's name. */
-const THEMES = fs.readdirSync(path.join(APP, 'themes')).filter((f) => f.endsWith('.json')).sort()
-    .map((f) => JSON.parse(fs.readFileSync(path.join(APP, 'themes', f), 'utf8')));
+/* One button per theme the car loads (package/assets/themes.json, written by
+ * tools/build_assets.js): themesPick_<id>, showing the theme's name. A theme
+ * in themes/ that is not built yet gets no button. */
+const THEMES = JSON.parse(fs.readFileSync(path.join(PKG, 'assets', 'themes.json'), 'utf8')).themes;
 
 const STATES = [
     state(1, 'ST_Themes_Main', 10, TITLE, null, [
