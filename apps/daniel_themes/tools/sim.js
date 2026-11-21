@@ -231,12 +231,24 @@ rhmi.getByName = (n) => byName[n] || null;
 rhmi.mapEntryState = (uuid, st) => { entryStates[uuid] = st; return Promise.resolve(); };
 rhmi.openEntryState = (uuid) => { const st = entryStates[uuid]; if (st) st.emit('visible', { visible: true }); return Promise.resolve(); };
 let availability = null;
+/* what the app reported to MainApp, in order: 'active', 'visible', 'hidden' */
+const reports = [];
+let sdkApp = null;
 class OnlineApp extends EventEmitter {
-    constructor() { super(); this.rhmiApplication = rhmi; this.appDescription = appDescription; this.startReason = 'AUTOSTART'; }
-    start() { setImmediate(() => this.emit('initialized')); return Promise.resolve(); }
-    initialized() { return Promise.resolve(); }
+    constructor() {
+        super(); sdkApp = this;
+        this.rhmiApplication = rhmi; this.appDescription = appDescription; this.startReason = 'AUTOSTART';
+        this._initialized = false; this._appStatusService = null;
+    }
+    start() {
+        setImmediate(() => { this._appStatusService = {}; this.emit('appStatusProxyReady'); this.emit('initialized'); });
+        return Promise.resolve();
+    }
+    initialized() { this._initialized = true; return Promise.resolve(); }
     getAppId() { return manifest.id; }
-    registerActive() {}
+    registerActive() { reports.push('active'); return Promise.resolve(); }
+    registerHmiVisible() { reports.push('visible'); return Promise.resolve(); }
+    unregisterHmiVisible() { reports.push('hidden'); return Promise.resolve(); }
     getLastExecutedEntryPointUuid() { return null; }
     destroyBundles() { return Promise.resolve(); }
     getEntryPoints() {
@@ -321,6 +333,23 @@ async function run() {
     if (layers.size !== 10) fail(`${layers.size} layers, expected 10 (plate, 2 levels, 2 needles, 2 hubs, 3 readouts)`);
     if (visible()) fail('layers visible before the car sent a speed');
     if (availability !== 'ENABLED') fail(`tile ${availability}`);
+    if (reports[0] !== 'active') fail(`MainApp was not told the app is active at start (reports: ${reports.join(', ')})`);
+
+    /* the tile tapped: the page opens and MainApp hears it is visible (the
+     * HMI's "Loading app" waits for that); the page closed: hidden */
+    reports.length = 0;
+    sdkApp.emit('entryPointExecute', appDescription.application.entryPoints[0].uuid);
+    await wait(100);
+    step(`tile tapped: reports ${reports.join(', ')}`);
+    if (reports.indexOf('visible') < 0 || reports.indexOf('active') < 0) fail('opening the tile did not report the app active and visible');
+    if (!shown.themesStatus.Text || shown.themesStatus.Text === 'Starting') fail(`the page reads "${shown.themesStatus.Text}" after opening`);
+    reports.length = 0;
+    byName.ST_Themes_Main.emit('visible', { visible: false });
+    await wait(500);
+    if (reports.join() !== 'hidden') fail(`closing the page reported: ${reports.join(', ')}`);
+    rhmi.emit('applicationStackChanged', { ROOT_APP: {} });
+    await wait(50);
+    if (reports.join() !== 'hidden,active,visible') fail(`the app back on top reported: ${reports.join(', ')}`);
 
     drive({ speedKmh: 0, rpm: 780, stage: 'P', gearWire: 2 });
     await wait(800);

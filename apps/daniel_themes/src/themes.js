@@ -35,6 +35,7 @@ const FOREGROUND_REASONS = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'T
 const PRESS_DEDUPE_MS = 400;
 const GATE_MS = 250;                    // how often the show rule is looked at
 const RENDERER_MISSING_MS = 15000;      // no answer from cluster-render this long: say it is not installed
+const HIDE_SETTLE_MS = 300;             // a page hidden this long (not shown again meanwhile) counts as gone
 
 /* Where the app keeps its files: next to its installed package on the car;
  * THEMES_DATA / THEMES_ASSETS for tools/sim.js. */
@@ -84,7 +85,13 @@ class Themes extends OnlineApp {
         this._started = Date.now();
         this._statusText = '';
         this._themes = [];
+        this._visible = false;
+        this._hideTimer = null;
 
+        /* MainApp stops an app that does not report itself active once its
+         * status channel is up (idrive7-apps kit/runtime/mgu.js). */
+        this.on('appStatusProxyReady', () => this._reportActive());
+        this.on('changeVisibility', (data) => { if (data && data.visible === false) this._setVisible(false); });
         this.on('initialized', () => {
             this._startCluster();
             this._setupHmi().catch((err) => logger.error(`themes HMI setup failed: ${err && err.message}`));
@@ -220,7 +227,15 @@ class Themes extends OnlineApp {
             if (entry) this._press(entry.name, entry.handler);
         });
         rhmi.on('restoreHmi', () => this._render(true));
-        this._main.on('visible', (ev) => { if (isTrue(ev && ev.visible)) this._render(true); });
+        rhmi.on('applicationStackChanged', (stack) => {
+            if (!stack || typeof stack !== 'object' || !Object.keys(stack).length) return;
+            this._setVisible(Object.prototype.hasOwnProperty.call(stack, 'ROOT_APP'));
+        });
+        this._main.on('visible', (ev) => {
+            clearTimeout(this._hideTimer);
+            if (isTrue(ev && ev.visible)) this._setVisible(true);
+            else this._hideTimer = setTimeout(() => this._setVisible(false), HIDE_SETTLE_MS);
+        });
 
         const foreground = this._startedForeground();
         return this._registerEntryPoint()
@@ -229,6 +244,7 @@ class Themes extends OnlineApp {
                 return this.initialized();
             })
             .then(() => {
+                if (this._visible) this._reportVisible();
                 this._render(true);
                 const last = this.getLastExecutedEntryPointUuid && this.getLastExecutedEntryPointUuid();
                 return last ? this._open(last) : undefined;
@@ -252,8 +268,38 @@ class Themes extends OnlineApp {
             .then(() => logger.info(`entry point ${description.name} ENABLED`));
     }
 
+    _reportActive() {
+        Promise.resolve()
+            .then(() => this.registerActive())
+            .then(() => logger.info('registered active'))
+            .catch((err) => logger.warn(`registerActive failed: ${err && err.message}`));
+    }
+
+    /* The page shown or gone, reported to MainApp as the Store app does: the
+     * HMI's "Loading app" waits for an opened app to report itself visible. */
+    _setVisible(visible) {
+        if (this._stopping || this._visible === visible) return;
+        this._visible = visible;
+        clearTimeout(this._hideTimer);
+        logger.info(`page ${visible ? 'visible' : 'hidden'}`);
+        if (visible) this._render(true);
+        this._reportVisible();
+    }
+
+    _reportVisible() {
+        if (!this._initialized || !this._appStatusService) return;   // reported once initialized
+        let reports;
+        try {
+            reports = this._visible ? [this.registerActive(), this.registerHmiVisible()] : [this.unregisterHmiVisible()];
+        } catch (err) {
+            reports = [Promise.reject(err)];
+        }
+        reports.forEach((r) => Promise.resolve(r).catch((err) => logger.warn(`app status report failed: ${err && err.message}`)));
+    }
+
     _open(uuid) {
         if (this._stopping || !this.rhmiApplication || !uuid) return Promise.resolve();
+        this._setVisible(true);
         this._render(true);
         return Promise.resolve(this.rhmiApplication.openEntryState(uuid))
             .catch((err) => logger.warn(`openEntryState failed: ${err && err.message}`));
@@ -315,7 +361,7 @@ class Themes extends OnlineApp {
 }
 
 const app = new Themes();
-app.start().catch((err) => {
+app.start().then(() => app._reportActive()).catch((err) => {
     // stays resident so the app manager can stop or restart it
     logger.error(`${APP_ID} failed to start: ${err && err.message}`);
 });
