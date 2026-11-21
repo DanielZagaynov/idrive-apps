@@ -35,7 +35,8 @@ const FOREGROUND_REASONS = ['ENTRY_POINT', 'LUM', 'BOOKMARK', 'START_WIDGET', 'T
 const PRESS_DEDUPE_MS = 400;
 const GATE_MS = 250;                    // how often the show rule is looked at
 const RENDERER_MISSING_MS = 15000;      // no answer from cluster-render this long: say it is not installed
-const HIDE_SETTLE_MS = 300;             // a page hidden this long (not shown again meanwhile) counts as gone
+const CLUSTER_AFTER_MS = 4000;          // the theme starts by then even if the page setup has not finished
+const HIDE_SETTLE_MS = 300;            // a page hidden this long (not shown again meanwhile) counts as gone
 
 /* Where the app keeps its files: next to its installed package on the car;
  * THEMES_DATA / THEMES_ASSETS for tools/sim.js. */
@@ -92,9 +93,17 @@ class Themes extends OnlineApp {
          * status channel is up (idrive7-apps kit/runtime/mgu.js). */
         this.on('appStatusProxyReady', () => this._reportActive());
         this.on('changeVisibility', (data) => { if (data && data.visible === false) this._setVisible(false); });
+        /* The page first: decoding the theme's pictures takes seconds of the
+         * car's CPU (cpuLimit), and the HMI waits on an opened app meanwhile.
+         * The theme starts once the page is set up, or after CLUSTER_AFTER_MS. */
         this.on('initialized', () => {
-            this._startCluster();
-            this._setupHmi().catch((err) => logger.error(`themes HMI setup failed: ${err && err.message}`));
+            this._loadThemeList();
+            let started = false;
+            const startCluster = () => { if (!started && !this._stopping) { started = true; this._startCluster(); } };
+            this._setupHmi()
+                .catch((err) => logger.error(`themes HMI setup failed: ${err && err.message}`))
+                .then(() => setTimeout(startCluster, 0));
+            setTimeout(startCluster, CLUSTER_AFTER_MS);
         });
         this.on('shutdown', (reason) => this._stop(reason));
         this.on('error', (err) => logger.warn(`OnlineApp error: ${err && err.message}`));
@@ -103,8 +112,8 @@ class Themes extends OnlineApp {
 
     /* ---- the cluster ---- */
 
-    _startCluster() {
-        logger.info(`${APP_ID} starting, theme ${this._settings.theme} ${this._settings.enabled ? 'on' : 'off'}`);
+    /* The theme list (small): the page's buttons need it before the theme starts. */
+    _loadThemeList() {
         try {
             this._assets = findAssets(ASSET_DIRS);
             this._themes = JSON.parse(fs.readFileSync(path.join(this._assets, 'themes.json'), 'utf8')).themes || [];
@@ -113,6 +122,10 @@ class Themes extends OnlineApp {
             logger.error(`no themes: ${e.message}`);
         }
         if (this._themes.length && !this._themes.some((t) => t.id === this._settings.theme)) this._settings.theme = this._themes[0].id;
+    }
+
+    _startCluster() {
+        logger.info(`${APP_ID} starting, theme ${this._settings.theme} ${this._settings.enabled ? 'on' : 'off'}`);
         this._startTheme();
         this._car = new Car(someipBuilders, logger);
         this._car.start();

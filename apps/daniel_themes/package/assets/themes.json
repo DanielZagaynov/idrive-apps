@@ -13,6 +13,10 @@
       "name": "Glacier"
     },
     {
+      "id": "minecraft",
+      "name": "Minecraft"
+    },
+    {
       "id": "stealth",
       "name": "Stealth"
     },

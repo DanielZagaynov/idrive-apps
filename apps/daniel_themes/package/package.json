@@ -1,12 +1,12 @@
 {
   "name": "daniel_themes",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Cluster themes: a full-cluster artwork with live needles and readouts (iDrive 7, needs Cluster renderer)",
   "private": false,
   "main": "javascript/runner.js",
   "oapAppSettings": {
     "maxDiskUsage": 20971520,
-    "cpuLimit": 10,
+    "cpuLimit": 30,
     "memoryThresholdKB": 131072,
     "priority": "PRIO_MEDIUM",
     "visibility": "FOREGROUND",

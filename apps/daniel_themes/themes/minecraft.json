@@ -1,0 +1,29 @@
+{
+  "id": "minecraft",
+  "name": "Minecraft",
+  "plate": "assets/minecraft_plate.png",
+  "note": "The owner's blocky render, needles and readouts not painted in, so it is the plate itself. Positions in cluster pixels (1920x720, the 2000x750 picture x 0.96). 'points' are [value, x, y] at each value's tick mark; the needle turns on the gem and stops 'margin' px short of the tick. 'level' runs 'inner' px inside the ticks, along the grass and the nether rim; red from 7,000 rpm, where the lava is.",
+  "speed": {
+    "pivot": [444, 363],
+    "unit": "mph",
+    "max": 180,
+    "margin": 6,
+    "points": [[0, 252, 555], [20, 228, 496], [40, 178, 406], [60, 168, 307], [80, 216, 223],
+               [100, 303, 156], [120, 422, 149], [140, 536, 152], [160, 647, 152], [180, 760, 149]]
+  },
+  "rpm": {
+    "pivot": [1476, 363],
+    "max": 8000,
+    "redFrom": 7000,
+    "margin": 6,
+    "points": [[0, 1647, 552], [1000, 1690, 496], [2000, 1742, 406], [3000, 1752, 309], [4000, 1720, 223],
+               [5000, 1626, 158], [6000, 1509, 151], [7000, 1387, 152], [8000, 1208, 149]]
+  },
+  "needle": {"color": "#ffd23f", "length": 300, "base": 10, "tip": 4},
+  "hubRadius": 40,
+  "level": {"inner": 24, "width": 10, "glow": 8, "from": "#4fe3ff", "to": "#ffd23f", "red": "#ff3a1a", "alpha": 0.95},
+  "readouts": {
+    "speed": {"x": 960, "y": 320, "capHeight": 110, "align": "center", "color": "#f4f4f4", "box": [740, 245, 440, 150], "stretch": 1.2, "bold": 3},
+    "gear":  {"x": 960, "y": 470, "capHeight": 56, "align": "center", "color": "#f4f4f4", "box": [890, 430, 140, 80], "stretch": 1.2, "bold": 2}
+  }
+}
