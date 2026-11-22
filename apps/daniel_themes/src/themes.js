@@ -101,10 +101,10 @@ class Themes extends OnlineApp {
         this._theme = null;
         this._loading = null;              // a theme still reading its files
         this._car = null;
-        this._error = '';
+        this._loadError = '';
         this._renderer = 'connecting';
         this._target = '';
-        this._started = Date.now();
+        this._bornAt = Date.now();
         this._statusText = '';
         this._themes = [];
         this._visible = false;
@@ -142,7 +142,7 @@ class Themes extends OnlineApp {
             this._assets = findAssets(ASSET_DIRS);
             this._themes = JSON.parse(fs.readFileSync(path.join(this._assets, 'themes.json'), 'utf8')).themes || [];
         } catch (e) {
-            this._error = e.message;
+            this._loadError = e.message;
             logger.error(`no themes: ${e.message}`);
         }
         if (this._themes.length && !this._themes.some((t) => t.id === this._settings.theme)) this._settings.theme = this._themes[0].id;
@@ -161,7 +161,7 @@ class Themes extends OnlineApp {
      * picked meanwhile replaces the one still loading. */
     _startTheme() {
         if (!this._assets) return;
-        this._error = '';
+        this._loadError = '';
         if (this._loading) this._loading.stop();
         const id = this._settings.theme;
         const theme = this._loading = new ClusterTheme(ClusterRender, {
@@ -186,7 +186,7 @@ class Themes extends OnlineApp {
                 if (theme !== this._loading) return;   // replaced or stopped: not an error
                 this._loading = null;
                 theme.stop();
-                this._error = e.message;
+                this._loadError = e.message;
                 this._theme = null;
                 freeMemory();
                 logger.error(`theme ${id} not started: ${e.message}`);
@@ -229,11 +229,11 @@ class Themes extends OnlineApp {
     }
 
     _status() {
-        if (this._error) return `Theme could not load: ${this._error}`;
+        if (this._loadError) return `Theme could not load: ${this._loadError}`;
         if (!this._settings.enabled) return 'Off: BMW gauges on the cluster';
         if (this._loading && !this._theme) return 'Loading the theme';
         if (this._renderer !== 'ready') {
-            return Date.now() - this._started > RENDERER_MISSING_MS && this._renderer === 'connecting'
+            return Date.now() - this._bornAt > RENDERER_MISSING_MS && this._renderer === 'connecting'
                 ? 'Waiting for Cluster renderer (install it from the Store: robertnisipeanu/idrive-apps)'
                 : 'Connecting to the cluster renderer';
         }
@@ -418,6 +418,8 @@ class Themes extends OnlineApp {
 
 const app = new Themes();
 app.start().then(() => app._reportActive()).catch((err) => {
-    // stays resident so the app manager can stop or restart it
+    /* Also on stderr: the logger only reaches DLT. With nothing left to do
+     * Node then exits, and MainApp restarts the app. */
     logger.error(`${APP_ID} failed to start: ${err && err.message}`);
+    console.error(`${APP_ID} failed to start: ${err && err.message}`);
 });

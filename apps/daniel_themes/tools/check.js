@@ -73,6 +73,17 @@ if (!sdk.length) fail('mgu-app.json: sdk is empty');
 /* The car's linker (mgu-store tools/oap_link.js) names each module
  * ./<file name>.js and takes a relative require only by that exact name. */
 const moduleNames = modules.map((f) => `./${path.basename(f)}`);
+/* The fields and methods OnlineApp (oap-sdk 24.10.2) keeps on `this`. */
+const ONLINE_APP_OWN = ('_appBookmarksProxy _appStatus _appStatusService _audioStatus _changeVisibilityHandler ' +
+    '_createAppBookmarksProxy _createAppStatusService _createRhmiApplication _createStartWidgetRhmiApplication ' +
+    '_entryPoints _error _executeHandler _folderInitializer _getExecutedBookmarkUuid ' +
+    '_getExecutedEntryPointUuidAndReason _getInitialVisibilityData _getManagedEntryPoints _getRhmiDescriptions ' +
+    '_getStartParameter _heartbeat _hmiStatus _initHeartbeat _initialized _lastExecutedBookmarkUuid ' +
+    '_lastExecutedEntryPointReason _lastExecutedEntryPointUuid _loadJoynrPromise _multiLanguageStringBundleFactory ' +
+    '_oapControllerListener _packageJson _participantIdGenerator _privateEntryPointProxy ' +
+    '_provisioningNotifierFactory _registeredEntryPoints _rhmiManager _sendStatus _shutdown _shutdownHeartbeat ' +
+    '_shuttingDown _startWidgetMultiLanguageStringBundleFactory _startWidgetRhmiResourcesLocator _started ' +
+    '_tryRegisterPrivateEntryPoint _uiDescription _useCaseFactory _visibilityData').split(' ');
 const sources = {};
 modules.forEach((rel) => {
     const file = path.join(APP, rel);
@@ -93,6 +104,19 @@ modules.forEach((rel) => {
         const ok = sdk.indexOf(name) >= 0 || builtins.indexOf(name) >= 0 ||
             moduleNames.indexOf(name) >= 0;
         if (!ok) fail(`${rel}: require('${name}') is not a module, an sdk name or a Node builtin`);
+    }
+    /* A subclass of OnlineApp shares `this` with it: setting one of its own
+     * fields breaks the SDK. 0.1.7 set _started (start() then said "Already
+     * started" and the app exited at once) and _error (an SDK method). */
+    if (/extends OnlineApp\b/.test(code)) {
+        const own = new Set();
+        const fieldRe = /this\.(_[A-Za-z0-9_$]+)\s*=[^=]/g;
+        const methodRe = /^\s{4}(_[A-Za-z0-9_$]+)\s*\([^)]*\)\s*\{/gm;
+        while ((hit = fieldRe.exec(code))) own.add(hit[1]);
+        while ((hit = methodRe.exec(code))) own.add(hit[1]);
+        own.forEach((name) => {
+            if (ONLINE_APP_OWN.indexOf(name) >= 0) fail(`${rel}: this.${name} is OnlineApp's own (SDK 24.10.2); rename it`);
+        });
     }
 });
 
