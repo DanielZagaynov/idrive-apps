@@ -18,6 +18,9 @@ Also in this repo:
   **AirPlay receiver** (`tools/daniel-airplay`): your iPhone's screen on the
   centre display through Screen Mirroring, over the car's Wi-Fi, only while
   parked. See [apps/daniel_airplay/README.md](apps/daniel_airplay/README.md).
+- **Lane Hop** (`daniel_lanehop`, iDrive 7): a lane-crossing arcade game drawn
+  through mgu-render, played with the iDrive controller or touch, only while
+  parked. See [apps/daniel_lanehop/README.md](apps/daniel_lanehop/README.md).
 
 ## Install it on the car
 

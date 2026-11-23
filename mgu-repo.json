@@ -6,6 +6,8 @@
       "title": "Cluster Themes", "requires": { "cluster-render": "0.6.9" }, "mguHmi": ["ID7"] },
     { "id": "daniel_airplay", "kind": "app", "path": "apps/daniel_airplay", "build": "unit",
       "title": "AirPlay Mirror", "requires": { "daniel-airplay": "0.1.0" }, "needs": ["renderer"], "mguHmi": ["ID7"] },
+    { "id": "daniel_lanehop", "kind": "app", "path": "apps/daniel_lanehop", "build": "unit",
+      "title": "Lane Hop", "needs": ["renderer"], "mguHmi": ["ID7"] },
     { "id": "daniel-airplay", "kind": "tool", "path": "tools/daniel-airplay",
       "title": "AirPlay receiver", "optional": true, "uninstallable": true, "mguHmi": ["ID7"] }
   ]
