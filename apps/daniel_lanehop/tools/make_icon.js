@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Writes the tile icon, package/rhmiData/variantGroups/Common/images/lanehop_icon.png:
- * 140 x 140 RGBA (the size of the car's app list): a near-white robot (Lane
+ * 140 x 140 RGBA (the size of the car's app list): a near-white hamster (Lane
  * Hop's player) between two dashed lane lines, on a transparent background,
  * like the other apps' tiles. No dependencies. Replace the PNG with your own
  * any time (at most 128 KiB).
@@ -26,16 +26,16 @@ function inRoundRect(x, y, x0, y0, x1, y1, r) {
 function inside(x, y) {
     // dashed lane lines left and right
     if ((Math.abs(x - 20) <= 3 || Math.abs(x - 120) <= 3) && (Math.floor((y - 10) / 24) % 2 === 0) && y > 10 && y < 130) return true;
-    // antenna: a stalk and a ball
-    if (Math.abs(x - 70) <= 2.5 && y >= 26 && y <= 40) return true;
-    if ((x - 70) * (x - 70) + (y - 22) * (y - 22) <= 36) return true;
-    // body with the visor cut out, and an eye left in it
-    const body = inRoundRect(x, y, 40, 38, 100, 98, 12);
-    const visor = inRoundRect(x, y, 49, 50, 91, 72, 5);
-    const eye = inRoundRect(x, y, 76, 56, 86, 66, 2);
-    if (body && (!visor || eye)) return true;
+    // the hamster: ears (with their insides cut out), a plump round body, eyes and nose cut out
+    const d2 = (cx, cy) => (x - cx) * (x - cx) + (y - cy) * (y - cy);
+    const ear = (cx) => d2(cx, 36) <= 121 && d2(cx, 37) > 30;
+    if (ear(48) || ear(92)) return true;
+    const body = inRoundRect(x, y, 36, 38, 104, 112, 26);
+    const eyes = d2(56, 70) <= 30 || d2(84, 70) <= 30;
+    const nose = inRoundRect(x, y, 66, 80, 74, 86, 2);
+    if (body && !eyes && !nose) return true;
     // feet
-    if (inRoundRect(x, y, 46, 102, 62, 116, 3) || inRoundRect(x, y, 78, 102, 94, 116, 3)) return true;
+    if (inRoundRect(x, y, 46, 108, 62, 120, 4) || inRoundRect(x, y, 78, 108, 94, 120, 4)) return true;
     return false;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "daniel_lanehop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lane Hop: a lane-crossing arcade game for the centre display, playable while parked. Needs mgu-render.",
   "private": false,
   "main": "javascript/runner.js",

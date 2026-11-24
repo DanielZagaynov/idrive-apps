@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const Game = require('../src/game').Game;
+const WIDTH = require('../src/game').WIDTH;
 const draw = require('../src/draw');
 
 const APP = path.join(__dirname, '..');
@@ -83,7 +84,7 @@ function autoplay(g, steps) {
         for (let t = 0; t <= ahead; t += 0.05) {
             const at = g.time + t;
             if (col.type === 'road' && col.items.some((it) => { const top = g.itemY(col, it, at); return y + 0.9 > top && y + 0.1 < top + it.len; })) return false;
-            if (col.type === 'water' && !col.items.some((it) => { const top = g.itemY(col, it, at); return y + 0.5 > top + 0.2 && y + 0.5 < top + it.len - 0.2; })) return false;
+            if (col.type === 'water' && !col.items.some((it) => { const left = g.itemY(col, it, at); return y + 0.5 > left + 0.2 && y + 0.5 < left + it.len - 0.2; })) return false;
             if (col.type === 'rail') { const tr = g.train(col, at); if (tr.warning) return false; }
         }
         return true;
@@ -94,8 +95,8 @@ function autoplay(g, steps) {
         if (p.hop < 1) continue;
         const y = Math.round(p.y);
         if (safe(p.x + 1, y, 0.35)) g.move('forward');
-        else if (y > 0 && safe(p.x, y - 1, 0.3) && safe(p.x + 1, y - 1, 0.35)) g.move('up');
-        else if (y < 10 && safe(p.x, y + 1, 0.3) && safe(p.x + 1, y + 1, 0.35)) g.move('down');
+        else if (y > 0 && safe(p.x, y - 1, 0.3) && safe(p.x + 1, y - 1, 0.35)) g.move('left');
+        else if (y < WIDTH - 1 && safe(p.x, y + 1, 0.3) && safe(p.x + 1, y + 1, 0.35)) g.move('right');
     }
 }
 
@@ -123,7 +124,7 @@ for (let seed = 20261123; seed < 20261123 + 200; seed++) {
 }
 const play = shot(g, 'lanehop-play');
 let n = 0;
-while (g.state !== 'over' && n++ < 2000) { g.move(['forward', 'up', 'down'][n % 3]); g.update(1 / 30); }
+while (g.state !== 'over' && n++ < 2000) { g.move(['forward', 'left', 'right'][n % 3]); g.update(1 / 30); }
 for (let i = 0; i < 30; i++) g.update(1 / 30);
 shot(g, 'lanehop-over');
 if (process.argv.indexOf('--readme') >= 0) {

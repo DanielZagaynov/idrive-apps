@@ -1,33 +1,37 @@
 # Lane Hop (iDrive 7)
 
 A lane-crossing arcade game for the centre display, **playable only while the car is parked**.
-Hop a little robot across grass, roads, rivers and railway lines, as far as you can.
+Hop a little hamster up the screen across grass, roads, rivers and railway lines, as far as you can.
 
 ![Lane Hop on a 1692 × 544 embed box (tools/preview.js)](preview.png)
 
-The world scrolls to the right to suit the wide screen. Each column is one of:
+It's drawn in a raised 3/4 view: cars, trees, logs, trains and the hamster are chunky pixel-art
+blocks with a lit top, a darker front and a shadow. Forward is up the screen; the play area is the
+bright strip in the middle, and the dimmed scenery either side is out of bounds.
 
-| Column | What happens |
+Lanes come in groups, usually with grass to rest on between them:
+
+| Lane | What happens |
 |---|---|
-| Grass | Safe. Trees block single cells. |
-| Road | Cars and trucks drive up or down. Get hit and it's over. |
-| River | Crates float up or down. Stand on one or you sink. Ride a crate off the screen and you're swept away. |
+| Grass | Safe. Trees and rocks block single cells. |
+| Road | One to four lanes of cars and trucks driving left or right. Get hit and it's over. |
+| River | Logs float left or right, with neighbouring lanes flowing opposite ways. Stand on a log or you sink. Ride one out of the play area and you're swept away. |
 | Rail | A light flashes, then a fast train comes through. |
 
-Your score is how many columns you get. The best score is saved on the car.
+Your score is how many lanes you get. The best score is saved on the car.
 
 ## Controls
 
 | | iDrive controller | Touch |
 |---|---|---|
-| Hop forward (right) | Press, or tilt right | Tap, or swipe right |
-| Hop up / down | Turn the knob, or tilt up / down | Swipe up / down |
-| Hop back (left) | Tilt left | Swipe left |
+| Hop forward (up) | Press, or tilt up | Tap, or swipe up |
+| Hop left / right | Turn the knob, or tilt left / right | Swipe left / right |
+| Hop back (down) | Tilt down | Swipe down |
 | Start / play again | Press | Tap |
 
 With mgu-render's controller gate installed, the game holds the whole controller while
-you play. Without it, the HMI keeps tilt up (its menu) and tilt left (BACK). The knob,
-tilt right and tilt down still work, and the press arrives as the game page's button.
+you play. Without it, the HMI keeps tilt up (its menu) and tilt left (BACK): press to hop
+forward, and the knob, tilt right and tilt down still work.
 
 ## Install
 
@@ -49,15 +53,15 @@ Your game is kept, so **Play** continues it once you've stopped.
 ```
 mgu-app.json                id, version, modules, the oap-sdk names they use
 src/lanehop.js              the app: pages, parked gate, renderer, controller, touch, best score
-src/game.js                 the rules (no car APIs): world, moves, collisions, score
-src/draw.js                 a frame as mgu-render draw ops (CLEAR + RECT pixel art, ~25 KB a frame)
+src/game.js                 the rules (no car APIs): lanes, moves, collisions, score
+src/draw.js                 a frame as mgu-render draw ops (CLEAR + RECT pixel art in 3/4 view, 30-60 KB a frame)
 src/speed.js                "parked", from Vehicle2's speed (copied from daniel_airplay)
 src/mgu_render_client.js    the renderer's client (copied from mgu-store)
 package/                    the staged package (manifest/permissions copied from the Store app)
 tools/gen_rhmi.js           the page table: ST_Lanehop_Main, _Embed, _Layer
 tools/make_icon.js          draws the tile icon
 tools/check.js              offline checks before you push
-tools/test_game.js          the rules: passable worlds, safe start, collisions, fairness
+tools/test_game.js          the rules: passable worlds, safe start, lane groups, collisions, fairness
 tools/sim.js                runs the app on your PC against a stand-in HMI, speed and renderer
 tools/preview.js            draws frames to PNG (sim-out/) the way mgu-render would
 tools/build.js              packs it with mgu-store's own linker

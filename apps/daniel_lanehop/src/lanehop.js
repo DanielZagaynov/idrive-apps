@@ -13,11 +13,12 @@
  *
  * Input:
  *   - iDrive controller, held from the HMI while playing where mgu-render has the
- *     controller gate (info.controller): tilt any way hops that way, the knob
- *     hops up and down, press hops forward (and starts / restarts).
+ *     controller gate (info.controller): tilt any way hops that way (up the
+ *     screen is forward), the knob hops left and right, press hops forward
+ *     (and starts / restarts).
  *   - Without the gate: FrontCCU over SOME/IP gives the knob and the east and
  *     south tilts (the HMI keeps north and west = BACK); the press arrives as
- *     the page's own button being pressed.
+ *     the page's own button being pressed, so press is how to hop forward.
  *   - Touch on the game: a tap hops forward, a swipe hops that way.
  *
  * Safety: the game page opens and stays open only while Vehicle2's speed says
@@ -55,9 +56,10 @@ const DATA_DIR = process.env.LANEHOP_DATA || path.join(__dirname, '..', '..', 'd
 const BEST_FILE = path.join(DATA_DIR, 'best.json');
 
 /* FrontCCU's (and X_CCU's) tilt values: by name or ordinal, short or long; centred clears it. */
-const TILT = { NORD_KURZ_GEDRUECKT: 'up', NORD_LANG_GEDRUECKT: 'up', OST_KURZ_GEDRUECKT: 'forward', OST_LANG_GEDRUECKT: 'forward',
-    SUED_KURZ_GEDRUECKT: 'down', SUED_LANG_GEDRUECKT: 'down', WEST_KURZ_GEDRUECKT: 'back', WEST_LANG_GEDRUECKT: 'back',
-    1: 'up', 2: 'up', 4: 'forward', 5: 'forward', 7: 'down', 8: 'down', 10: 'back', 11: 'back' };
+/* Forward is up the screen: north hops forward, south back, east and west sideways. */
+const TILT = { NORD_KURZ_GEDRUECKT: 'forward', NORD_LANG_GEDRUECKT: 'forward', OST_KURZ_GEDRUECKT: 'right', OST_LANG_GEDRUECKT: 'right',
+    SUED_KURZ_GEDRUECKT: 'back', SUED_LANG_GEDRUECKT: 'back', WEST_KURZ_GEDRUECKT: 'left', WEST_LANG_GEDRUECKT: 'left',
+    1: 'forward', 2: 'forward', 4: 'right', 5: 'right', 7: 'back', 8: 'back', 10: 'left', 11: 'left' };
 const CENTRED = ['MITTELSTELLUNG', 0];
 const PUSHED = ['DREHGEBER_KURZ_GEDRUECKT', 'DREHGEBER_LANG_GEDRUECKT', 1, 2];
 const RELEASED = ['KEINE_BETAETIGUNG', 0];
@@ -82,7 +84,7 @@ function statusText(best, parked, renderer) {
     }
     if (!parked) return 'Lane Hop is available when parked.';
     const record = best > 0 ? 'Best: ' + best + '. ' : '';
-    return record + 'Press "Play".\nTilt or swipe to hop, turn the knob to move up and down, press to hop forward.';
+    return record + 'Press "Play".\nPress or tap to hop forward, turn the knob to move sideways, tilt or swipe to hop any way.';
 }
 
 function readBest() {
@@ -314,8 +316,8 @@ class LaneHop extends OnlineApp {
             const dx = x - this._touch.x, dy = y - this._touch.y;
             this._touch = null;
             if (Math.abs(dx) < TAP_PX && Math.abs(dy) < TAP_PX) this._act('press');
-            else if (Math.abs(dx) > Math.abs(dy)) this._act(dx > 0 ? 'forward' : 'back');
-            else this._act(dy > 0 ? 'down' : 'up');
+            else if (Math.abs(dx) > Math.abs(dy)) this._act(dx > 0 ? 'right' : 'left');
+            else this._act(dy < 0 ? 'forward' : 'back');
         } else if (phase === 'cancel') {
             this._touch = null;
         }
@@ -333,7 +335,7 @@ class LaneHop extends OnlineApp {
             return;
         }
         const steps = dialSteps(last.knob, e.knob);
-        if (steps) this._act(steps > 0 ? 'down' : 'up');
+        if (steps) this._act(steps > 0 ? 'right' : 'left');
         if (e.press && e.press !== last.press && e.seq !== last.seq) this._act('press');
         if (tilt && tilt !== last.dir) this._act(tilt);
     }
@@ -361,9 +363,9 @@ class LaneHop extends OnlineApp {
         };
         if (!last || (this._controller && this.gpu && this.gpu.grabbing)) return;    // X_CCU has it
         const steps = dialSteps(last.knob, this._fccu.knob);
-        if (steps) this._act(steps > 0 ? 'down' : 'up');
-        // the HMI takes north (its menu) and west (BACK) itself
-        if ((tilt === 'forward' || tilt === 'down') && tilt !== last.tilt) this._act(tilt);
+        if (steps) this._act(steps > 0 ? 'right' : 'left');
+        // the HMI takes north (its menu) and west (BACK) itself: east hops right, south hops back
+        if ((tilt === 'right' || tilt === 'back') && tilt !== last.tilt) this._act(tilt);
     }
 
     /* The page's button pressed by the HMI: only counts while the controller is the HMI's. */

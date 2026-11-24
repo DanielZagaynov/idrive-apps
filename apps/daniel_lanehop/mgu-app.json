@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "daniel_lanehop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tree": "package",
   "modules": [
     "src/lanehop.js",

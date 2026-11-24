@@ -10,7 +10,7 @@
  *
  * and checks the rules: the game shows and takes the controller and touch
  * only while parked and on its page; moving closes it and gives them back;
- * input moves the robot; frames use only CLEAR and RECT; the best score is
+ * input moves the hamster; frames use only CLEAR and RECT; the best score is
  * saved. It is NOT BMW's SDK or the real renderer.
  *
  *   node tools/sim.js
@@ -222,17 +222,29 @@ new Promise((r) => renderServer.listen(RENDER, r))
         ccu({ press: 0 });
         expect('controller press started the game and hopped forward', game().state === 'playing' && game().player.x === 1, pos());
         at = game().player.y;
+        ccu({ tilt: 4 });                         // tilt east
+        return wait(250);
+    })
+    .then(() => {
+        ccu({ tilt: 0 });
+        expect('tilt east hopped right', game().player.y === at + 1, pos());
+        ccuKnob -= 1; ccu({});                    // knob one detent anticlockwise
+        return wait(250);
+    })
+    .then(() => {
+        expect('knob anticlockwise hopped left', game().player.y === at, pos());
+        ccu({ tilt: 1 });                         // tilt north
+        return wait(250);
+    })
+    .then(() => {
+        ccu({ tilt: 0 });
+        expect('tilt north hopped forward (up the screen)', game().player.x === 2, pos());
         ccu({ tilt: 7 });                         // tilt south
         return wait(250);
     })
     .then(() => {
         ccu({ tilt: 0 });
-        expect('tilt south hopped down', game().player.y === at + 1, pos());
-        ccuKnob -= 1; ccu({});                    // knob one detent anticlockwise
-        return wait(250);
-    })
-    .then(() => {
-        expect('knob anticlockwise hopped up', game().player.y === at, pos());
+        expect('tilt south hopped back', game().player.x === 1, pos());
         frontCcu({ frontRotaryEncoderOperation: 5, frontRotaryEncoderPushButton: 'KEINE_BETAETIGUNG', frontRotaryEncoderDeflection: 'MITTELSTELLUNG' });
         frontCcu({ frontRotaryEncoderOperation: 6, frontRotaryEncoderPushButton: 'KEINE_BETAETIGUNG', frontRotaryEncoderDeflection: 'MITTELSTELLUNG' });
         press('lanehopEmbedFocus');
@@ -245,12 +257,17 @@ new Promise((r) => renderServer.listen(RENDER, r))
     })
     .then(() => {
         expect('a tap hopped forward', game().player.x === 2, pos());
-        at = game().player.y;
         touch('down', 200, 80); touch('move', 200, 50); touch('up', 200, 40);   // swipe up
         return wait(250);
     })
     .then(() => {
-        expect('a swipe up hopped up', game().player.y === at - 1 || (at === 0 && game().player.y === 0), pos());
+        expect('a swipe up hopped forward', game().player.x === 3, pos());
+        at = game().player.y;
+        touch('down', 200, 60); touch('move', 180, 61); touch('up', 170, 62);   // swipe left
+        return wait(250);
+    })
+    .then(() => {
+        expect('a swipe left hopped left', game().player.y === at - 1, pos());
         stateMsg(false, false);                   // a popup over the page
         return wait(300);
     })
@@ -291,12 +308,12 @@ new Promise((r) => renderServer.listen(RENDER, r))
     })
     .then(() => {
         expect('parked again: Play brings the same game back', R.shownNow && R.grab && game().paused === false && game().player.x === at, pos());
-        // walk into trouble until the robot loses
+        // walk into trouble until the hamster loses
         let n = 0, lastX = -1;
         const step = () => {
             if (game().state === 'over' || n++ > 400) return Promise.resolve();
             if (game().player.x === lastX) {
-                ccu({ tilt: n % 4 < 2 ? 1 : 7 }); ccu({ tilt: 0 });   // blocked by a tree: sidestep up or down
+                ccu({ tilt: n % 4 < 2 ? 4 : 10 }); ccu({ tilt: 0 });  // blocked by a tree: sidestep right or left
             }
             lastX = game().player.x;
             ccuSeq++; ccu({ press: 1 }); ccu({ press: 0 });
@@ -306,7 +323,7 @@ new Promise((r) => renderServer.listen(RENDER, r))
     })
     .then(() => wait(300))
     .then(() => {
-        expect('the robot can lose', game().state === 'over', pos());
+        expect('the hamster can lose', game().state === 'over', pos());
         const saved = (() => { try { return JSON.parse(fs.readFileSync(path.join(DATA, 'best.json'), 'utf8')).best; } catch (e) { return null; } })();
         expect('best score saved to best.json', saved === game().best && saved > 0, `saved ${saved}, best ${game().best}`);
         return wait(700);
